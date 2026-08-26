@@ -3,7 +3,6 @@
 import pytest
 
 from nz_vehicle_data_pipeline.identity.vin import (
-    VINValidationResult,
     calculate_vin_check_digit,
     validate_vin,
 )
@@ -12,12 +11,11 @@ from nz_vehicle_data_pipeline.identity.vin import (
 @pytest.mark.parametrize(
     "valid_vin",
     [
-        "1HGCR2F83HA000000",  # 9th char is 3
-        "1FA6P8CF5H5000000",  # 9th char is 5
-        "WAUZZZ8V8KA000000",  # European style valid checksum format
-        "JTDKN3DU5A0000000",  # Toyota VIN format
-        "1G1YY22U965000000",  # Check digit 9
-        "1FTFW1ET4EF000000",  # Check digit 4
+        "1HGCR2F85HA000000",  # Check digit 5
+        "1HGCR2F8XHA000008",  # Check digit X (remainder 10)
+        "1FA6P8CF8H5000000",  # Check digit 8
+        "WAUZZZ8V4KA000000",  # Check digit 4
+        "JTDKN3DU6A0000000",  # Check digit 6
     ],
 )
 def test_valid_vin_checksum(valid_vin: str) -> None:
@@ -34,7 +32,7 @@ def test_vin_with_invalid_length() -> None:
     assert result_short.is_valid is False
     assert result_short.error_reason == "VIN must be exactly 17 characters (got 11)"
 
-    result_long = validate_vin("1HGCR2F83HA000000EXTRA")
+    result_long = validate_vin("1HGCR2F85HA000000EXTRA")
     assert result_long.is_valid is False
     assert "17 characters" in str(result_long.error_reason)
 
@@ -42,7 +40,7 @@ def test_vin_with_invalid_length() -> None:
 def test_vin_with_forbidden_characters_ioq() -> None:
     """Verify letters I, O, Q are disallowed in 17-char VINs per ISO 3779."""
     for forbidden in ["I", "O", "Q"]:
-        vin = f"1HGCR2F83HA00000{forbidden}"
+        vin = f"1HGCR2F85HA00000{forbidden}"
         result = validate_vin(vin)
         assert result.is_valid is False
         assert f"Illegal character '{forbidden}' in VIN" in str(result.error_reason)
@@ -50,8 +48,7 @@ def test_vin_with_forbidden_characters_ioq() -> None:
 
 def test_vin_with_corrupted_check_digit() -> None:
     """Verify mismatch between calculated check digit and position 9 is rejected."""
-    # 1HGCR2F83HA000000 has valid check digit 3 at index 8 (position 9).
-    # Changing check digit to 7 must fail validation.
+    # 1HGCR2F85HA000000 has valid check digit 5. Changing check digit to 7 must fail.
     corrupted_vin = "1HGCR2F87HA000000"
     result = validate_vin(corrupted_vin)
     assert result.is_valid is False
@@ -60,7 +57,5 @@ def test_vin_with_corrupted_check_digit() -> None:
 
 def test_calculate_vin_check_digit_x() -> None:
     """Verify check digit remainder of 10 calculates as 'X'."""
-    # Construct a VIN where weighted sum % 11 == 10
-    # Let's test calculate_vin_check_digit function directly
-    calc = calculate_vin_check_digit("1HGCR2F83HA000000")
-    assert calc == "3"
+    calc = calculate_vin_check_digit("1HGCR2F8XHA000008")
+    assert calc == "X"
