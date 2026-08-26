@@ -5,6 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from nz_vehicle_data_pipeline.persistence.models import (
@@ -48,18 +49,24 @@ class PostgresCanonicalStore:
 
     async def publish(self, result: ReconciliationResult) -> tuple[CanonicalRevisionRecord, bool]:
         """Atomically lock vehicle, check material hash, and publish new revision if changed."""
-        v_stmt = select(VehicleRow).where(VehicleRow.vin == result.vin).with_for_update()
-        vehicle = (await self._session.execute(v_stmt)).scalar_one_or_none()
+        now = datetime.now(UTC)
 
-        if vehicle is None:
-            vehicle = VehicleRow(
+        # Ensure vehicle row exists; handle concurrent initial inserts with on_conflict_do_nothing
+        init_stmt = (
+            pg_insert(VehicleRow)
+            .values(
                 vin=result.vin,
-                created_at=datetime.now(UTC),
+                created_at=now,
                 current_revision_id=None,
                 current_material_hash=None,
             )
-            self._session.add(vehicle)
-            await self._session.flush()
+            .on_conflict_do_nothing(index_elements=["vin"])
+        )
+        await self._session.execute(init_stmt)
+
+        # Acquire exclusive row lock on the vehicle
+        v_stmt = select(VehicleRow).where(VehicleRow.vin == result.vin).with_for_update()
+        vehicle = (await self._session.execute(v_stmt)).scalar_one()
 
         mat_hash = result.material_hash()
         if vehicle.current_material_hash == mat_hash and vehicle.current_revision_id is not None:
@@ -77,7 +84,6 @@ class PostgresCanonicalStore:
         max_rev = (await self._session.execute(latest_rev_stmt)).scalar_one_or_none() or 0
         next_rev_num = max_rev + 1
         rev_id = f"rev_{result.vin}_{next_rev_num}"
-        now = datetime.now(UTC)
 
         prov_json = {
             k: [p.model_dump(mode="json") for p in provs]

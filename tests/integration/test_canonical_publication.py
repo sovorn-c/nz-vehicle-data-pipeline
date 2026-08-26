@@ -5,11 +5,15 @@ from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 
 import pytest
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from nz_vehicle_data_pipeline.observation.models import SourceSystem
 from nz_vehicle_data_pipeline.persistence.canonical_store import PostgresCanonicalStore
-from nz_vehicle_data_pipeline.persistence.models import Base
+from nz_vehicle_data_pipeline.persistence.models import (
+    Base,
+    CanonicalRevisionRow,
+)
 from nz_vehicle_data_pipeline.reconciliation.confidence import (
     ConfidenceAssessment,
     ConfidenceBand,
@@ -194,3 +198,67 @@ async def test_publish_material_change_increments_revision(
     assert len(history) == 2
     assert history[0].revision_number == 2  # newest first
     assert history[1].revision_number == 1
+
+
+async def test_publish_failure_rolls_back_entire_transaction(
+    db_session: AsyncSession,
+) -> None:
+    """Verify any child or commit failure rolls back all writes."""
+    store = PostgresCanonicalStore(db_session)
+    as_of = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
+    vin = "1HGCR2F85HA000000"
+
+    link = ProvenanceLink(
+        observation_id="obs_1",
+        source_system=SourceSystem.NHTSA_VPIC,
+        source_record_id="1",
+        retrieved_at=as_of,
+    )
+    confidence = ConfidenceAssessment(
+        score=91,
+        band=ConfidenceBand.HIGH,
+        field_scores={"make": 91},
+        field_components={
+            "make": {
+                "authority": 100,
+                "agreement": 70,
+                "freshness": 100,
+                "validation": 100,
+            }
+        },
+        rule_version="confidence-v1",
+        explanation="High confidence",
+    )
+    result = ReconciliationResult(
+        vin=vin,
+        canonical_fields={"make": "HONDA"},
+        field_provenance={"make": [link]},
+        conflicts=[],
+        confidence=confidence,
+        as_of=as_of,
+        rule_versions={"resolution": "resolution-v1", "confidence": "confidence-v1"},
+    )
+
+    # Simulate error by injecting a session failure
+    original_commit = db_session.commit
+
+    async def broken_commit() -> None:
+        raise RuntimeError("Simulated database failure during publication")
+
+    db_session.commit = broken_commit  # type: ignore[method-assign]
+
+    with pytest.raises(RuntimeError, match="Simulated database failure"):
+        await store.publish(result)
+
+    db_session.commit = original_commit  # type: ignore[method-assign]
+    await db_session.rollback()
+
+    # Verify no partial revision was written
+    rev_count = (
+        await db_session.execute(
+            select(func.count(CanonicalRevisionRow.revision_id)).where(
+                CanonicalRevisionRow.vin == vin
+            )
+        )
+    ).scalar_one()
+    assert rev_count == 0
