@@ -10,6 +10,10 @@ from nz_vehicle_data_pipeline.reconciliation.provenance import (
     CandidateValue,
     ProvenanceLink,
 )
+from nz_vehicle_data_pipeline.reconciliation.resolution import (
+    FieldResolutionResult,
+    FieldResolver,
+)
 
 __all__ = [
     "CandidateExtractor",
@@ -17,5 +21,7 @@ __all__ = [
     "ConflictDetector",
     "ConflictState",
     "FieldConflict",
+    "FieldResolutionResult",
+    "FieldResolver",
     "ProvenanceLink",
 ]

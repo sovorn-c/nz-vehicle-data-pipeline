@@ -1,6 +1,7 @@
 """Tests for deterministic FieldResolver and resolution policies (e02s02 task t02)."""
 
 from datetime import UTC, datetime
+
 from nz_vehicle_data_pipeline.observation.models import SourceSystem
 from nz_vehicle_data_pipeline.reconciliation.conflicts import ConflictState
 from nz_vehicle_data_pipeline.reconciliation.provenance import (
