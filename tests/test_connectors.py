@@ -1,6 +1,7 @@
 """Tests for source connectors (e01s04 task t01)."""
 
 import json
+
 from nz_vehicle_data_pipeline.connectors.base import RawSourceRecord
 from nz_vehicle_data_pipeline.connectors.dealer import DealerFeedConnector
 from nz_vehicle_data_pipeline.connectors.nhtsa import NHTSAVPICConnector
