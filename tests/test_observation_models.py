@@ -2,7 +2,8 @@
 
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 import pytest
 from pydantic import ValidationError
 
@@ -39,7 +40,7 @@ def test_source_observation_creates_sha256_hash_if_omitted() -> None:
         ingestion_run_id="run_001",
         source_record_id="row_42",
         raw_payload=payload_str,
-        retrieved_at=datetime.now(timezone.utc),
+        retrieved_at=datetime.now(UTC),
         synthetic=False,
     )
 
@@ -60,7 +61,7 @@ def test_source_observation_verifies_provided_hash_matches() -> None:
             source_record_id="row_43",
             raw_payload=payload_str,
             payload_hash_sha256=invalid_hash,
-            retrieved_at=datetime.now(timezone.utc),
+            retrieved_at=datetime.now(UTC),
             synthetic=False,
         )
     assert "payload_hash_sha256 does not match SHA-256 of raw_payload" in str(exc_info.value)
@@ -70,7 +71,6 @@ def test_source_observation_synthetic_flag_enforcement() -> None:
     """Verify synthetic source systems must have synthetic=True."""
     payload_str = '{"vin": "TEST1234567890123", "lien": true}'
 
-    # Attempting to mark synthetic source as non-synthetic must fail validation
     with pytest.raises(ValidationError) as exc_info:
         SourceObservation(
             observation_id="obs_003",
@@ -78,7 +78,7 @@ def test_source_observation_synthetic_flag_enforcement() -> None:
             ingestion_run_id="run_002",
             source_record_id="ppsr_99",
             raw_payload=payload_str,
-            retrieved_at=datetime.now(timezone.utc),
+            retrieved_at=datetime.now(UTC),
             synthetic=False,
         )
     assert "Synthetic source system must have synthetic=True" in str(exc_info.value)
@@ -86,7 +86,7 @@ def test_source_observation_synthetic_flag_enforcement() -> None:
 
 def test_ingestion_run_lifecycle() -> None:
     """Verify IngestionRun tracks progress and record metrics."""
-    started = datetime.now(timezone.utc)
+    started = datetime.now(UTC)
     run = IngestionRun(
         ingestion_run_id="run_100",
         source_system=SourceSystem.NHTSA_VPIC,
