@@ -1,15 +1,16 @@
-"""Tests for CandidateExtractor (e02s01 task t02)."""
+"""Tests for CandidateExtractor under ADR 0002, ADR 0003, and e02 scope."""
 
 from datetime import UTC, date, datetime
-
 import pytest
 
 from nz_vehicle_data_pipeline.normalization.engine import NormalizedObservation
 from nz_vehicle_data_pipeline.normalization.staging_models import (
     DealerListingStaged,
     NHTSAVPICStaged,
+    NZTAFleetStaged,
     PPSRInterestStaged,
     StolenIndicatorStaged,
+    WriteoffClassificationStaged,
 )
 from nz_vehicle_data_pipeline.observation.models import SourceObservation, SourceSystem
 from nz_vehicle_data_pipeline.reconciliation.extractor import CandidateExtractor
@@ -22,13 +23,14 @@ def extractor() -> CandidateExtractor:
 
 def test_extract_nhtsa_candidates(extractor: CandidateExtractor) -> None:
     """Verify extracting specification candidates from NHTSA staged observation."""
+    as_of = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
     obs = SourceObservation(
         observation_id="obs_nhtsa_01",
         source_system=SourceSystem.NHTSA_VPIC,
         ingestion_run_id="run_1",
         source_record_id="1HGCR2F85HA000000",
         raw_payload="{}",
-        retrieved_at=datetime.now(UTC),
+        retrieved_at=as_of,
         synthetic=False,
     )
     staged = NHTSAVPICStaged(
@@ -59,23 +61,28 @@ def test_extract_nhtsa_candidates(extractor: CandidateExtractor) -> None:
     assert make_c.value == "HONDA"
     assert make_c.provenance.source_system == SourceSystem.NHTSA_VPIC
     assert make_c.provenance.observation_id == "obs_nhtsa_01"
+    assert make_c.provenance.retrieved_at == as_of
 
 
-def test_extract_dealer_and_ppsr_candidates(extractor: CandidateExtractor) -> None:
-    """Verify extracting dealer market fields and synthetic PPSR interest."""
+def test_extract_dealer_candidates(extractor: CandidateExtractor) -> None:
+    """Verify extracting dealer market fields and specs."""
+    as_of = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
     obs_dealer = SourceObservation(
         observation_id="obs_dlr_01",
         source_system=SourceSystem.DEALER_FEED,
         ingestion_run_id="run_1",
         source_record_id="L_100",
         raw_payload="{}",
-        retrieved_at=datetime.now(UTC),
+        retrieved_at=as_of,
         synthetic=True,
     )
     staged_dealer = DealerListingStaged(
         dealer_id="DLR_1",
         listing_id="L_100",
         vin="1HGCR2F85HA000000",
+        make="HONDA",
+        model="ACCORD",
+        model_year=2018,
         price_cents=1999000,
         odometer_km=52000,
     )
@@ -86,18 +93,45 @@ def test_extract_dealer_and_ppsr_candidates(extractor: CandidateExtractor) -> No
     )
 
     dealer_candidates = extractor.extract(obs_dealer, norm_dealer)
-    price_c = next(c for c in dealer_candidates if c.field_name == "asking_price_cents")
-    assert price_c.value == 1999000
-    assert price_c.provenance.synthetic is True
+    fields = {c.field_name: c.value for c in dealer_candidates}
+    assert fields["make"] == "HONDA"
+    assert fields["model"] == "ACCORD"
+    assert fields["year"] == 2018
+    assert fields["asking_price_cents"] == 1999000
+    assert fields["odometer_km"] == 52000
 
-    # Test PPSR extraction
+
+def test_nzta_and_synthetic_risk_yield_zero_candidates_in_e02(
+    extractor: CandidateExtractor,
+) -> None:
+    """Verify NZTA (EVIDENCE_ONLY) and synthetic risk records yield 0 candidates in e02."""
+    as_of = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
+
+    # NZTA Evidence Only
+    obs_nzta = SourceObservation(
+        observation_id="obs_nzta_01",
+        source_system=SourceSystem.NZTA_FLEET,
+        ingestion_run_id="run_1",
+        source_record_id="1",
+        raw_payload="{}",
+        retrieved_at=as_of,
+    )
+    staged_nzta = NZTAFleetStaged(vin11="1HGCR2F85HA", make="HONDA", model="ACCORD")
+    norm_nzta = NormalizedObservation(
+        observation_id="obs_nzta_01",
+        source_system=SourceSystem.NZTA_FLEET,
+        staged_data=staged_nzta,
+    )
+    assert extractor.extract(obs_nzta, norm_nzta) == []
+
+    # Synthetic PPSR (deferred to e04)
     obs_ppsr = SourceObservation(
         observation_id="obs_ppsr_01",
         source_system=SourceSystem.PPSR_SYNTHETIC,
         ingestion_run_id="run_1",
         source_record_id="PPSR_9",
         raw_payload="{}",
-        retrieved_at=datetime.now(UTC),
+        retrieved_at=as_of,
         synthetic=True,
     )
     staged_ppsr = PPSRInterestStaged(
@@ -113,38 +147,4 @@ def test_extract_dealer_and_ppsr_candidates(extractor: CandidateExtractor) -> No
         source_system=SourceSystem.PPSR_SYNTHETIC,
         staged_data=staged_ppsr,
     )
-
-    ppsr_candidates = extractor.extract(obs_ppsr, norm_ppsr)
-    assert len(ppsr_candidates) == 1
-    assert ppsr_candidates[0].field_name == "ppsr_interests"
-    assert ppsr_candidates[0].value["ppsr_id"] == "PPSR_9"
-
-
-def test_extract_stolen_indicator(extractor: CandidateExtractor) -> None:
-    """Verify extracting stolen status candidate."""
-    obs_stolen = SourceObservation(
-        observation_id="obs_stl_01",
-        source_system=SourceSystem.STOLEN_SYNTHETIC,
-        ingestion_run_id="run_1",
-        source_record_id="STL_99",
-        raw_payload="{}",
-        retrieved_at=datetime.now(UTC),
-        synthetic=True,
-    )
-    staged_stolen = StolenIndicatorStaged(
-        report_id="STL_99",
-        vin="1HGCR2F85HA000000",
-        stolen_flag=True,
-        report_date=date(2024, 2, 10),
-        police_district="Wellington",
-        synthetic=True,
-    )
-    norm_stolen = NormalizedObservation(
-        observation_id="obs_stl_01",
-        source_system=SourceSystem.STOLEN_SYNTHETIC,
-        staged_data=staged_stolen,
-    )
-
-    stolen_candidates = extractor.extract(obs_stolen, norm_stolen)
-    status_c = next(c for c in stolen_candidates if c.field_name == "stolen_status")
-    assert status_c.value == "LISTED"
+    assert extractor.extract(obs_ppsr, norm_ppsr) == []
