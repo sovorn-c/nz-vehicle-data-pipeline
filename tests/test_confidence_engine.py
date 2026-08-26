@@ -1,9 +1,9 @@
 """Tests for ConfidenceEngine mathematical calculations under ADR 0003 (confidence-v1)."""
 
 from datetime import UTC, datetime, timedelta
+
 from nz_vehicle_data_pipeline.observation.models import SourceSystem
 from nz_vehicle_data_pipeline.reconciliation.confidence import (
-    ConfidenceAssessment,
     ConfidenceBand,
     ConfidenceEngine,
 )

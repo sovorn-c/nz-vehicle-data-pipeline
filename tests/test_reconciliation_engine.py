@@ -1,12 +1,14 @@
 """Tests for ReconciliationEngine orchestrator under ADR 0003 and ADR 0004."""
 
 from datetime import UTC, datetime
+
 from nz_vehicle_data_pipeline.normalization.engine import NormalizedObservation
 from nz_vehicle_data_pipeline.normalization.staging_models import (
     DealerListingStaged,
     NHTSAVPICStaged,
 )
 from nz_vehicle_data_pipeline.observation.models import SourceObservation, SourceSystem
+from nz_vehicle_data_pipeline.reconciliation.confidence import ConfidenceBand
 from nz_vehicle_data_pipeline.reconciliation.engine import ReconciliationEngine
 
 
@@ -72,7 +74,9 @@ async def test_reconcile_emits_pure_deterministic_result() -> None:
     assert result.canonical_fields["make"] == "HONDA"
     assert result.canonical_fields["asking_price_cents"] == 2100000
     assert result.field_provenance["make"][0].source_system == SourceSystem.NHTSA_VPIC
-    assert result.confidence.score >= 80
+    # Minimum field score governs (asking_price_cents with Dealer authority 60 gives 75 MEDIUM)
+    assert result.confidence.score == 75
+    assert result.confidence.band == ConfidenceBand.MEDIUM
 
     # Ensure no DB publication metadata is present
     assert not hasattr(result, "revision_number")
@@ -81,7 +85,7 @@ async def test_reconcile_emits_pure_deterministic_result() -> None:
 
 
 async def test_reconcile_determinism_identical_runs_match_material_hash() -> None:
-    """Verify running reconciliation multiple times on identical evidence produces identical material hash."""
+    """Verify identical evidence inputs produce identical material hashes."""
     vin = "1HGCR2F85HA000000"
     as_of = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
 
@@ -117,5 +121,6 @@ async def test_reconcile_determinism_identical_runs_match_material_hash() -> Non
         eligible_pairs=[(obs_nhtsa, norm_nhtsa)],
         as_of=as_of,
     )
-    assert res1 is not None and res2 is not None
+    assert res1 is not None
+    assert res2 is not None
     assert res1.material_hash() == res2.material_hash()

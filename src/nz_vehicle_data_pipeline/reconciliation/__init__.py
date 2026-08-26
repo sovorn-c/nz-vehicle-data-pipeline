@@ -1,9 +1,5 @@
-"""Reconciliation, provenance tracking, and conflict resolution engine."""
+"""Reconciliation, provenance tracking, and conflict resolution engine (ADR 0003, ADR 0004)."""
 
-from nz_vehicle_data_pipeline.reconciliation.canonical import (
-    CanonicalRevision,
-    MaterialChangeDetector,
-)
 from nz_vehicle_data_pipeline.reconciliation.confidence import (
     ConfidenceAssessment,
     ConfidenceBand,
@@ -24,11 +20,11 @@ from nz_vehicle_data_pipeline.reconciliation.resolution import (
     FieldResolutionResult,
     FieldResolver,
 )
+from nz_vehicle_data_pipeline.reconciliation.result import ReconciliationResult
 
 __all__ = [
     "CandidateExtractor",
     "CandidateValue",
-    "CanonicalRevision",
     "ConfidenceAssessment",
     "ConfidenceBand",
     "ConfidenceEngine",
@@ -37,7 +33,7 @@ __all__ = [
     "FieldConflict",
     "FieldResolutionResult",
     "FieldResolver",
-    "MaterialChangeDetector",
     "ProvenanceLink",
     "ReconciliationEngine",
+    "ReconciliationResult",
 ]

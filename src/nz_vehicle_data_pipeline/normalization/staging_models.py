@@ -119,6 +119,9 @@ class DealerListingStaged(BaseModel):
     price_cents: int
     odometer_km: int
     condition: str = "GOOD"
+    make: str | None = None
+    model: str | None = None
+    model_year: int | None = None
     asking_price_nzd: str | None = None
     description: str | None = None
 

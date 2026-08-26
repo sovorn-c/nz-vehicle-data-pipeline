@@ -1,6 +1,7 @@
-"""Tests for ReconciliationResult, byte-level determinism, and material hashing (ADR 0003, ADR 0004)."""
+"""Tests for ReconciliationResult and material hashing (ADR 0003, ADR 0004)."""
 
 from datetime import UTC, datetime
+
 from nz_vehicle_data_pipeline.observation.models import SourceSystem
 from nz_vehicle_data_pipeline.reconciliation.confidence import (
     ConfidenceAssessment,
@@ -11,7 +12,7 @@ from nz_vehicle_data_pipeline.reconciliation.result import ReconciliationResult
 
 
 def test_reconciliation_result_pure_determinism() -> None:
-    """Verify ReconciliationResult has no ambient timestamp or random ID and produces identical material hashes."""
+    """Verify ReconciliationResult produces identical material hashes."""
     as_of = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
     link = ProvenanceLink(
         observation_id="obs_nhtsa_1",
@@ -23,7 +24,14 @@ def test_reconciliation_result_pure_determinism() -> None:
         score=91,
         band=ConfidenceBand.HIGH,
         field_scores={"make": 91},
-        field_components={"make": {"authority": 100, "agreement": 70, "freshness": 100, "validation": 100}},
+        field_components={
+            "make": {
+                "authority": 100,
+                "agreement": 70,
+                "freshness": 100,
+                "validation": 100,
+            }
+        },
         rule_version="confidence-v1",
         explanation="High confidence",
     )

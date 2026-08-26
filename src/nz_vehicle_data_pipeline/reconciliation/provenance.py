@@ -1,6 +1,6 @@
 """Provenance lineage tracking and candidate value models (ADR 0001, ADR 0003)."""
 
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -16,10 +16,7 @@ class ProvenanceLink(BaseModel):
     observation_id: str = Field(description="Unique observation identifier")
     source_system: SourceSystem = Field(description="Originating source system")
     source_record_id: str = Field(description="Record/row ID in source")
-    retrieved_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC),
-        description="Timestamp observation was retrieved",
-    )
+    retrieved_at: datetime = Field(description="Timestamp observation was retrieved from source")
     synthetic: bool = Field(
         default=False, description="Flag indicating synthetic demonstration source"
     )
@@ -33,7 +30,3 @@ class CandidateValue(BaseModel):
     field_name: str = Field(description="Canonical field name")
     value: Any = Field(description="Extracted attribute value")
     provenance: ProvenanceLink = Field(description="Lineage to source observation")
-    extracted_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC),
-        description="Timestamp value was extracted",
-    )

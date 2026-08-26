@@ -1,6 +1,5 @@
-"""Deterministic field resolution policies (ADR 0003)."""
+"""Deterministic field resolution policies and authority weights (ADR 0003)."""
 
-from datetime import UTC, datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -15,26 +14,11 @@ from nz_vehicle_data_pipeline.reconciliation.provenance import (
     ProvenanceLink,
 )
 
-RESOLUTION_RULE_VERSION = "1.0.0"
+RESOLUTION_RULE_VERSION = "resolution-v1"
 
-SPEC_FIELDS: set[str] = {
-    "make",
-    "model",
-    "year",
-    "body_type",
-    "vehicle_type",
-    "engine_cylinders",
-    "displacement_l",
-    "manufacturer",
-}
-
-RISK_FIELDS: set[str] = {
-    "ppsr_interests",
-    "stolen_status",
-    "stolen_report_date",
-    "police_district",
-    "writeoff_status",
-    "writeoff_damage_date",
+SOURCE_AUTHORITIES: dict[SourceSystem, int] = {
+    SourceSystem.NHTSA_VPIC: 100,
+    SourceSystem.DEALER_FEED: 60,
 }
 
 
@@ -44,119 +28,101 @@ class FieldResolutionResult(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     field_name: str = Field(description="Canonical field name")
-    resolved_value: Any = Field(description="Selected canonical value")
-    winning_provenance: ProvenanceLink = Field(description="Lineage of winning candidate")
+    resolved_value: Any | None = Field(
+        default=None, description="Selected canonical value or None if unresolved"
+    )
+    supporting_provenance: list[ProvenanceLink] = Field(
+        default_factory=list,
+        description="All source observations supporting the selected value",
+    )
     conflict: FieldConflict | None = Field(
-        default=None, description="Resolved or detected conflict if present"
+        default=None, description="Resolved or unresolved conflict if present"
     )
 
 
 class FieldResolver:
-    """Applies versioned deterministic resolution policies to candidate values."""
+    """Applies versioned deterministic resolution policies to candidate values (ADR 0003)."""
 
     def resolve_field(
         self, field_name: str, candidates: list[CandidateValue]
     ) -> FieldResolutionResult:
-        """Resolve a single field from candidate values with conflict detection."""
+        """Resolve a single field from candidate values with authority-based tie breaking."""
         if not candidates:
             msg = f"Cannot resolve field '{field_name}' with zero candidate values"
             raise ValueError(msg)
 
-        # Check for conflicts
-        first_val = candidates[0].value
-        has_disagreement = any(c.value != first_val for c in candidates[1:])
+        # Group candidates by exact value
+        by_value: dict[Any, list[CandidateValue]] = {}
+        for c in candidates:
+            by_value.setdefault(c.value, []).append(c)
 
-        winner: CandidateValue
-        conflict_obj: FieldConflict | None = None
+        # Single distinct candidate value -> No conflict
+        if len(by_value) == 1:
+            val = list(by_value.keys())[0]
+            provs = [c.provenance for c in by_value[val]]
+            # Sort provenance for determinism
+            provs.sort(key=lambda p: p.observation_id)
+            return FieldResolutionResult(
+                field_name=field_name,
+                resolved_value=val,
+                supporting_provenance=provs,
+                conflict=None,
+            )
 
-        if not has_disagreement:
-            # All candidates agree or single candidate exists
-            winner = self._pick_authoritative(field_name, candidates)
-        else:
-            # Conflict detected - apply deterministic resolution policy
-            winner = self._pick_authoritative(field_name, candidates)
-            rationale = self._get_rationale(field_name, winner)
+        # Multiple distinct values -> Conflict exists
+        value_authorities: dict[Any, int] = {}
+        for val, val_cands in by_value.items():
+            max_auth = max(
+                SOURCE_AUTHORITIES.get(c.provenance.source_system, 50) for c in val_cands
+            )
+            value_authorities[val] = max_auth
 
-            conflict_obj = FieldConflict(
+        highest_auth = max(value_authorities.values())
+        top_values = [val for val, auth in value_authorities.items() if auth == highest_auth]
+
+        if len(top_values) == 1:
+            # Single highest-authority winner
+            winning_val = top_values[0]
+            winning_cands = by_value[winning_val]
+            winning_provs = [c.provenance for c in winning_cands]
+            winning_provs.sort(key=lambda p: p.observation_id)
+
+            winning_src = winning_cands[0].provenance.source_system.value
+            conflict = FieldConflict(
                 field_name=field_name,
                 conflicting_candidates=candidates,
                 state=ConflictState.RESOLVED,
-                winning_candidate=winner,
+                winning_value=winning_val,
                 rule_version=RESOLUTION_RULE_VERSION,
-                rationale=rationale,
-                resolved_at=datetime.now(UTC),
+                rationale=(
+                    f"Higher authority {winning_src} ({highest_auth}) "
+                    f"wins over competing candidate values"
+                ),
             )
+
+            return FieldResolutionResult(
+                field_name=field_name,
+                resolved_value=winning_val,
+                supporting_provenance=winning_provs,
+                conflict=conflict,
+            )
+
+        # Tied at highest authority -> UNRESOLVED conflict, no canonical value
+        conflict = FieldConflict(
+            field_name=field_name,
+            conflicting_candidates=candidates,
+            state=ConflictState.UNRESOLVED,
+            winning_value=None,
+            rule_version=RESOLUTION_RULE_VERSION,
+            rationale=(
+                f"Equal authority disagreement ({highest_auth}) "
+                f"cannot be resolved without human intervention"
+            ),
+        )
 
         return FieldResolutionResult(
             field_name=field_name,
-            resolved_value=winner.value,
-            winning_provenance=winner.provenance,
-            conflict=conflict_obj,
+            resolved_value=None,
+            supporting_provenance=[],
+            conflict=conflict,
         )
-
-    def _pick_authoritative(
-        self, field_name: str, candidates: list[CandidateValue]
-    ) -> CandidateValue:
-        """Select the authoritative candidate according to field domain policy."""
-        if field_name in SPEC_FIELDS:
-            # NHTSA vPIC is authoritative for vehicle factory specifications
-            nhtsa_match = next(
-                (c for c in candidates if c.provenance.source_system == SourceSystem.NHTSA_VPIC),
-                None,
-            )
-            if nhtsa_match:
-                return nhtsa_match
-
-        if field_name == "ppsr_interests":
-            ppsr_match = next(
-                (
-                    c
-                    for c in candidates
-                    if c.provenance.source_system == SourceSystem.PPSR_SYNTHETIC
-                ),
-                None,
-            )
-            if ppsr_match:
-                return ppsr_match
-
-        if field_name in {"stolen_status", "stolen_report_date", "police_district"}:
-            stolen_match = next(
-                (
-                    c
-                    for c in candidates
-                    if c.provenance.source_system == SourceSystem.STOLEN_SYNTHETIC
-                ),
-                None,
-            )
-            if stolen_match:
-                return stolen_match
-
-        if field_name in {"writeoff_status", "writeoff_damage_date"}:
-            wo_match = next(
-                (
-                    c
-                    for c in candidates
-                    if c.provenance.source_system == SourceSystem.WRITEOFF_SYNTHETIC
-                ),
-                None,
-            )
-            if wo_match:
-                return wo_match
-
-        # Default / fallback: return first candidate
-        return candidates[0]
-
-    def _get_rationale(self, field_name: str, winner: CandidateValue) -> str:
-        """Return rationale string explaining resolution outcome."""
-        src = winner.provenance.source_system.value
-        if field_name in SPEC_FIELDS:
-            return (
-                f"NHTSA manufacturer VIN decode is authoritative "
-                f"for specification field '{field_name}' (winner: {src})"
-            )
-        if field_name in RISK_FIELDS:
-            return (
-                f"Dedicated incident/risk register is authoritative "
-                f"for '{field_name}' (winner: {src})"
-            )
-        return f"Deterministic policy selected candidate from {src} for '{field_name}'"

@@ -1,7 +1,8 @@
 """Tests for deterministic FieldResolver, authority weights, and tie resolution (ADR 0003)."""
 
-from datetime import UTC, datetime
 import itertools
+from datetime import UTC, datetime
+
 from nz_vehicle_data_pipeline.observation.models import SourceSystem
 from nz_vehicle_data_pipeline.reconciliation.conflicts import ConflictState
 from nz_vehicle_data_pipeline.reconciliation.provenance import (
@@ -44,7 +45,7 @@ def test_resolve_spec_field_conflict_favors_higher_authority_nhtsa() -> None:
 
 
 def test_equal_authority_disagreement_is_unresolved_across_all_permutations() -> None:
-    """Verify tied authority candidates (e.g. 60 vs 60) produce UNRESOLVED conflict and None value."""
+    """Verify tied authority candidates produce UNRESOLVED conflict and None value."""
     as_of = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
     link_dealer_a = ProvenanceLink(
         observation_id="obs_dlr_a",

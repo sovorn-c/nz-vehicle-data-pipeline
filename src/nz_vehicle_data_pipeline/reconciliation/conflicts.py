@@ -1,7 +1,7 @@
 """Field conflict models and conflict detection logic (ADR 0003)."""
 
-from datetime import UTC, datetime
 from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -28,18 +28,11 @@ class FieldConflict(BaseModel):
     state: ConflictState = Field(
         default=ConflictState.DETECTED, description="Current conflict resolution state"
     )
-    winning_candidate: CandidateValue | None = Field(
+    winning_value: Any | None = Field(
         default=None, description="Winning candidate value if resolved"
     )
     rule_version: str = Field(default="", description="Version of resolution rule applied")
     rationale: str = Field(default="", description="Explanation of resolution decision")
-    detected_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC),
-        description="Timestamp conflict was detected",
-    )
-    resolved_at: datetime | None = Field(
-        default=None, description="Timestamp conflict was resolved"
-    )
 
 
 class ConflictDetector:
@@ -56,7 +49,6 @@ class ConflictDetector:
             if len(field_candidates) < 2:
                 continue
 
-            # Compare string representations or equality of values
             first_val = field_candidates[0].value
             has_disagreement = any(c.value != first_val for c in field_candidates[1:])
 

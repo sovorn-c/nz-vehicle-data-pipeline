@@ -1,6 +1,7 @@
 """Tests for CandidateExtractor under ADR 0002, ADR 0003, and e02 scope."""
 
 from datetime import UTC, date, datetime
+
 import pytest
 
 from nz_vehicle_data_pipeline.normalization.engine import NormalizedObservation
@@ -9,8 +10,6 @@ from nz_vehicle_data_pipeline.normalization.staging_models import (
     NHTSAVPICStaged,
     NZTAFleetStaged,
     PPSRInterestStaged,
-    StolenIndicatorStaged,
-    WriteoffClassificationStaged,
 )
 from nz_vehicle_data_pipeline.observation.models import SourceObservation, SourceSystem
 from nz_vehicle_data_pipeline.reconciliation.extractor import CandidateExtractor
@@ -110,16 +109,16 @@ def test_nzta_and_synthetic_risk_yield_zero_candidates_in_e02(
     # NZTA Evidence Only
     obs_nzta = SourceObservation(
         observation_id="obs_nzta_01",
-        source_system=SourceSystem.NZTA_FLEET,
+        source_system=SourceSystem.NZTA_MVR,
         ingestion_run_id="run_1",
         source_record_id="1",
         raw_payload="{}",
         retrieved_at=as_of,
     )
-    staged_nzta = NZTAFleetStaged(vin11="1HGCR2F85HA", make="HONDA", model="ACCORD")
+    staged_nzta = NZTAFleetStaged(plate="ABC123", vin11="1HGCR2F85HA", make="HONDA", model="ACCORD")
     norm_nzta = NormalizedObservation(
         observation_id="obs_nzta_01",
-        source_system=SourceSystem.NZTA_FLEET,
+        source_system=SourceSystem.NZTA_MVR,
         staged_data=staged_nzta,
     )
     assert extractor.extract(obs_nzta, norm_nzta) == []
