@@ -1,13 +1,14 @@
 """Integration tests for PostgresObservationStore (e03s01)."""
 
-from datetime import UTC, datetime
 import os
+from collections.abc import AsyncGenerator
+from datetime import UTC, datetime
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from nz_vehicle_data_pipeline.observation.models import SourceObservation, SourceSystem
 from nz_vehicle_data_pipeline.observation.store import DuplicateObservationError
-from nz_vehicle_data_pipeline.persistence.database import get_engine, init_db
 from nz_vehicle_data_pipeline.persistence.models import Base
 from nz_vehicle_data_pipeline.persistence.observation_store import (
     PostgresObservationStore,
@@ -20,7 +21,7 @@ TEST_DB_URL = os.environ.get(
 
 
 @pytest.fixture
-async def db_session() -> AsyncSession:
+async def db_session() -> AsyncGenerator[AsyncSession, None]:
     engine = create_async_engine(TEST_DB_URL, echo=False)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
