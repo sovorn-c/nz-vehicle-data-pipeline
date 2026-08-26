@@ -1,8 +1,9 @@
 """Integration tests for atomic canonical publication in PostgreSQL (e03s02, ADR 0004)."""
 
+import os
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
-import os
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
