@@ -1,11 +1,11 @@
 """Tests for FieldConflict models and ConflictDetector (e02s02 task t01)."""
 
 from datetime import UTC, datetime
+
 from nz_vehicle_data_pipeline.observation.models import SourceSystem
 from nz_vehicle_data_pipeline.reconciliation.conflicts import (
     ConflictDetector,
     ConflictState,
-    FieldConflict,
 )
 from nz_vehicle_data_pipeline.reconciliation.provenance import (
     CandidateValue,
