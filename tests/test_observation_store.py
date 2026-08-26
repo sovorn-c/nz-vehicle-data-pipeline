@@ -1,6 +1,7 @@
 """Tests for ObservationStore repository (e01s01 task t02)."""
 
 from datetime import UTC, datetime
+
 import pytest
 
 from nz_vehicle_data_pipeline.observation.models import (

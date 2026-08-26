@@ -5,5 +5,17 @@ from nz_vehicle_data_pipeline.observation.models import (
     SourceObservation,
     SourceSystem,
 )
+from nz_vehicle_data_pipeline.observation.store import (
+    DuplicateObservationError,
+    InMemoryObservationStore,
+    ObservationStore,
+)
 
-__all__ = ["IngestionRun", "SourceObservation", "SourceSystem"]
+__all__ = [
+    "DuplicateObservationError",
+    "InMemoryObservationStore",
+    "IngestionRun",
+    "ObservationStore",
+    "SourceObservation",
+    "SourceSystem",
+]
