@@ -1,6 +1,7 @@
 """Tests for IdentityDisposition triage per ADR 0002 (e01s03 task t02)."""
 
 from datetime import UTC, date, datetime
+
 from nz_vehicle_data_pipeline.identity.triage import (
     IdentityDisposition,
     IdentityTriage,
