@@ -1,5 +1,10 @@
 """Reconciliation, provenance tracking, and conflict resolution engine."""
 
+from nz_vehicle_data_pipeline.reconciliation.confidence import (
+    ConfidenceAssessment,
+    ConfidenceBand,
+    ConfidenceEngine,
+)
 from nz_vehicle_data_pipeline.reconciliation.conflicts import (
     ConflictDetector,
     ConflictState,
@@ -18,6 +23,9 @@ from nz_vehicle_data_pipeline.reconciliation.resolution import (
 __all__ = [
     "CandidateExtractor",
     "CandidateValue",
+    "ConfidenceAssessment",
+    "ConfidenceBand",
+    "ConfidenceEngine",
     "ConflictDetector",
     "ConflictState",
     "FieldConflict",

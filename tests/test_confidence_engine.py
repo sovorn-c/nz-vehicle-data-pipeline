@@ -2,7 +2,6 @@
 
 from nz_vehicle_data_pipeline.observation.models import SourceSystem
 from nz_vehicle_data_pipeline.reconciliation.confidence import (
-    ConfidenceAssessment,
     ConfidenceBand,
     ConfidenceEngine,
 )
