@@ -1,8 +1,9 @@
 """Integration tests for Vehicle REST API endpoints (e03s03)."""
 
+import os
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
-import os
+
 import httpx
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -64,7 +65,7 @@ async def test_get_vehicle_not_found(client: httpx.AsyncClient) -> None:
 async def test_get_current_vehicle_and_history(
     client: httpx.AsyncClient, db_session: AsyncSession
 ) -> None:
-    """Verify publishing a revision and querying /v1/vehicles/{vin} and /v1/vehicles/{vin}/history."""
+    """Verify publishing a revision and querying current vehicle and history."""
     store = PostgresCanonicalStore(db_session)
     as_of = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
     vin = "1HGCR2F85HA000000"
