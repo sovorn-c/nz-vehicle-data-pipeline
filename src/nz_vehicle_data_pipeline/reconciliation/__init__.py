@@ -14,6 +14,7 @@ from nz_vehicle_data_pipeline.reconciliation.conflicts import (
     ConflictState,
     FieldConflict,
 )
+from nz_vehicle_data_pipeline.reconciliation.engine import ReconciliationEngine
 from nz_vehicle_data_pipeline.reconciliation.extractor import CandidateExtractor
 from nz_vehicle_data_pipeline.reconciliation.provenance import (
     CandidateValue,
@@ -38,4 +39,5 @@ __all__ = [
     "FieldResolver",
     "MaterialChangeDetector",
     "ProvenanceLink",
+    "ReconciliationEngine",
 ]
