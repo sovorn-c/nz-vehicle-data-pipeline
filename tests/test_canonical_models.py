@@ -1,6 +1,7 @@
 """Tests for CanonicalRevision and MaterialChangeDetector (e02s04 task t01)."""
 
 from datetime import UTC, datetime
+
 from nz_vehicle_data_pipeline.observation.models import SourceSystem
 from nz_vehicle_data_pipeline.reconciliation.canonical import (
     CanonicalRevision,
@@ -72,19 +73,25 @@ def test_material_change_detector_identifies_changes() -> None:
     detector = MaterialChangeDetector()
 
     # Identical content -> No material change
-    assert detector.has_material_change(
-        previous=rev1,
-        candidate_fields={"make": "HONDA", "year": 2017},
-        candidate_provenance={"make": link, "year": link},
-        candidate_conflicts=[],
-        candidate_confidence=confidence,
-    ) is False
+    assert (
+        detector.has_material_change(
+            previous=rev1,
+            candidate_fields={"make": "HONDA", "year": 2017},
+            candidate_provenance={"make": link, "year": link},
+            candidate_conflicts=[],
+            candidate_confidence=confidence,
+        )
+        is False
+    )
 
     # Value change -> Material change
-    assert detector.has_material_change(
-        previous=rev1,
-        candidate_fields={"make": "HONDA", "year": 2018},
-        candidate_provenance={"make": link, "year": link},
-        candidate_conflicts=[],
-        candidate_confidence=confidence,
-    ) is True
+    assert (
+        detector.has_material_change(
+            previous=rev1,
+            candidate_fields={"make": "HONDA", "year": 2018},
+            candidate_provenance={"make": link, "year": link},
+            candidate_conflicts=[],
+            candidate_confidence=confidence,
+        )
+        is True
+    )
