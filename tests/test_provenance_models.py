@@ -1,6 +1,7 @@
 """Tests for ProvenanceLink and CandidateValue models (e02s01 task t01)."""
 
 from datetime import UTC, datetime
+
 from nz_vehicle_data_pipeline.observation.models import SourceSystem
 from nz_vehicle_data_pipeline.reconciliation.provenance import (
     CandidateValue,
