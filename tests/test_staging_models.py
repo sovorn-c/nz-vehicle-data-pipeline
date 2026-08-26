@@ -1,6 +1,7 @@
 """Tests for strict staging models across all source types (e01s02 task t01)."""
 
 from datetime import date
+
 import pytest
 from pydantic import ValidationError
 
