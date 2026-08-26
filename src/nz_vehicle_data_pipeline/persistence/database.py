@@ -35,11 +35,9 @@ async def init_db(engine: AsyncEngine) -> None:
         await conn.run_sync(Base.metadata.create_all)
 
 
-async def get_db_session(
-    engine: AsyncEngine | None = None,
-) -> AsyncIterator[AsyncSession]:
+async def get_db_session() -> AsyncIterator[AsyncSession]:
     """FastAPI dependency yielding an async session."""
-    active_engine = engine or get_engine()
-    factory = get_session_factory(active_engine)
+    engine = get_engine()
+    factory = get_session_factory(engine)
     async with factory() as session:
         yield session

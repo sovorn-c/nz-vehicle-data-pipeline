@@ -1,7 +1,8 @@
-"""Integration tests proving IngestionPipeline persists durable evidence to PostgreSQL (e03s01 task t03)."""
+"""Integration tests proving IngestionPipeline persists durable evidence (e03s01)."""
 
-from collections.abc import AsyncGenerator
 import os
+from collections.abc import AsyncGenerator
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
