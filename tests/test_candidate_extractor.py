@@ -1,6 +1,7 @@
 """Tests for CandidateExtractor (e02s01 task t02)."""
 
 from datetime import UTC, date, datetime
+
 import pytest
 
 from nz_vehicle_data_pipeline.normalization.engine import NormalizedObservation
