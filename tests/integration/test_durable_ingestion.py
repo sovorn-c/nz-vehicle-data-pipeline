@@ -1,7 +1,8 @@
-"""Integration tests proving IngestionPipeline persists durable evidence (e03s01)."""
+"""Integration tests proving IngestionPipeline persists durable evidence (e03s01, e04s03)."""
 
 import os
 from collections.abc import AsyncGenerator
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -65,3 +66,35 @@ async def test_durable_ingestion_persists_observations_in_postgres(
     assert persisted[0].source_system == SourceSystem.NHTSA_VPIC
     assert persisted[0].source_record_id == "1HGCR2F85HA000000"
     assert "ACCORD" in persisted[0].raw_payload
+
+
+async def test_durable_ingestion_replay_preserves_original_stored_metadata(
+    db_session: AsyncSession,
+) -> None:
+    """Verify replaying identical payload reuses original observation metadata."""
+    store = PostgresObservationStore(db_session)
+    normalization_engine = NormalizationEngine()
+    pipeline = IngestionPipeline(store=store, engine=normalization_engine)
+
+    t1 = datetime(2026, 8, 1, 10, 0, 0, tzinfo=UTC)
+    t2 = t1 + timedelta(days=7)
+
+    data = [
+        {
+            "VIN": "1HGCR2F85HA000000",
+            "Make": "HONDA",
+            "Model": "ACCORD",
+            "ModelYear": 2017,
+            "VehicleType": "PASSENGER CAR",
+        }
+    ]
+    connector = NHTSAVPICConnector(data=data)
+
+    res1 = await pipeline.ingest(connector, run_id="run_pg_t1", captured_at=t1)
+    assert res1.items[0].observation.retrieved_at == t1
+    assert res1.items[0].observation.ingestion_run_id == "run_pg_t1"
+
+    # Replay with new run ID and new timestamp
+    res2 = await pipeline.ingest(connector, run_id="run_pg_t2", captured_at=t2)
+    assert res2.items[0].observation.retrieved_at == t1
+    assert res2.items[0].observation.ingestion_run_id == "run_pg_t1"

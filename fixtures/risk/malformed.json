@@ -1,0 +1,16 @@
+[
+  {
+    "ppsr_id": "PPSR_MALFORMED_99",
+    "vin": "1HGCR2F85HA000000",
+    "result": "MATCH",
+    "interests": [],
+    "metadata": {
+      "synthetic": true,
+      "dataset_id": "nz-synth-risk",
+      "dataset_version": "2026.08",
+      "scenario_id": "malformed_record",
+      "generated_at": "2026-08-01T10:00:00Z",
+      "disclaimer": "This record represents no real vehicle, person, police report, insurance decision, or financial obligation."
+    }
+  }
+]

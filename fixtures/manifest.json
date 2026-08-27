@@ -1,0 +1,117 @@
+{
+  "manifest_id": "release-manifest-2026.08",
+  "dataset_version": "2026.08",
+  "as_of": "2026-08-01T12:00:00Z",
+  "sources": [
+    {
+      "source_system": "NHTSA_VPIC",
+      "path": "nhtsa/vpic_decode.json",
+      "sha256": "9a4f14f7883d042de4531b7cb66bf472440ebdbdcd8a93e80b1b5d4b965510d0",
+      "format": "json",
+      "classification": "captured_public",
+      "licence": "US Government Public Domain"
+    },
+    {
+      "source_system": "NZTA_MVR",
+      "path": "nzta/fleet_snapshot.csv",
+      "sha256": "81392ef9a69b591a8585e74da6cdbac2e69eced5b4c750619058a51e40a0ad1d",
+      "format": "csv",
+      "classification": "captured_public",
+      "licence": "CC-BY 4.0 NZTA"
+    },
+    {
+      "source_system": "DEALER_FEED",
+      "path": "dealer/inventory.json",
+      "sha256": "5d66a7dfffc95eea3c072de3f91933f723ed8cdedd37a8e42815db050a435881",
+      "format": "json",
+      "classification": "synthetic",
+      "licence": "Synthetic Test Data"
+    },
+    {
+      "source_system": "DEALER_FEED",
+      "path": "dealer/inventory.xml",
+      "sha256": "0b3b89a3595f5f059051b1a7ecb0fa2875d01cc7e35084f356d28dbe7163f4dd",
+      "format": "xml",
+      "classification": "synthetic",
+      "licence": "Synthetic Test Data"
+    },
+    {
+      "source_system": "PPSR_SYNTHETIC",
+      "path": "risk/ppsr.json",
+      "sha256": "6ecef7bb905583c1a5e8349eb7a55ff74f1ab14755e15d72fa5d91fb06cfecca",
+      "format": "json",
+      "classification": "synthetic",
+      "licence": "Synthetic Test Data"
+    },
+    {
+      "source_system": "STOLEN_SYNTHETIC",
+      "path": "risk/stolen.json",
+      "sha256": "3079d36d6874cde6b85614f4e0084bc9b375165714e0c28f15b45a05fc9b58c7",
+      "format": "json",
+      "classification": "synthetic",
+      "licence": "Synthetic Test Data"
+    },
+    {
+      "source_system": "WRITEOFF_SYNTHETIC",
+      "path": "risk/writeoff.json",
+      "sha256": "3d314f8cc054735350a0dca2953e8510ccc8b1a83663fb542bdf306b29805355",
+      "format": "json",
+      "classification": "synthetic",
+      "licence": "Synthetic Test Data"
+    },
+    {
+      "source_system": "PPSR_SYNTHETIC",
+      "path": "risk/malformed.json",
+      "sha256": "6f2ee0c32337336f462259d94e04e5a1296b8f65eef29f73ddd61d7a9895c9ed",
+      "format": "json",
+      "classification": "synthetic",
+      "licence": "Synthetic Test Data"
+    }
+  ],
+  "scenarios": {
+    "clean_vehicle": {
+      "vin": "1HGCR2F85HA000000",
+      "expected_confidence": "MEDIUM",
+      "expected_stolen": "NOT_LISTED",
+      "expected_writeoff": "NONE",
+      "expected_ppsr": "NO_MATCH"
+    },
+    "risky_vehicle": {
+      "vin": "1FA6P8CF8H5000000",
+      "expected_confidence": "MEDIUM",
+      "expected_stolen": "LISTED",
+      "expected_writeoff": "STATUTORY",
+      "expected_ppsr": "MATCH"
+    },
+    "unknown_vehicle": {
+      "vin": "JM0BL10F000000000",
+      "expected_confidence": "MEDIUM",
+      "expected_stolen": "UNKNOWN",
+      "expected_writeoff": "UNKNOWN",
+      "expected_ppsr": "UNKNOWN"
+    },
+    "conflict_vehicle": {
+      "vin": "WAUZZZ8K7BA000000",
+      "expected_confidence": "LOW",
+      "expected_ppsr": null,
+      "expected_ppsr_conflict": true
+    },
+    "dealer_parity": {
+      "vin": "KMHD35LH2JU000000"
+    },
+    "evidence_only_nzta": {
+      "vin11": "1HGCR2F85HA"
+    },
+    "malformed_record": {
+      "record_id": "PPSR_MALFORMED_99",
+      "expected_error": "MATCH requires at least one interest"
+    }
+  },
+  "expected_outcomes": {
+    "total_observations": 22,
+    "eligible_count": 19,
+    "rejected_count": 1,
+    "evidence_only_count": 2,
+    "vehicles_count": 5
+  }
+}

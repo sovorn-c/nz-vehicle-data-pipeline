@@ -1,0 +1,57 @@
+[
+  {
+    "VIN": "1HGCR2F85HA000000",
+    "Make": "HONDA",
+    "Model": "ACCORD",
+    "ModelYear": 2017,
+    "VehicleType": "PASSENGER CAR",
+    "BodyClass": "Sedan/Saloon",
+    "DisplacementL": 2.4,
+    "EngineCylinders": 4,
+    "Manufacturer": "AMERICAN HONDA MOTOR CO., INC."
+  },
+  {
+    "VIN": "1FA6P8CF8H5000000",
+    "Make": "FORD",
+    "Model": "MUSTANG",
+    "ModelYear": 2018,
+    "VehicleType": "PASSENGER CAR",
+    "BodyClass": "Coupe",
+    "DisplacementL": 5.0,
+    "EngineCylinders": 8,
+    "Manufacturer": "FORD MOTOR COMPANY"
+  },
+  {
+    "VIN": "JM0BL10F000000000",
+    "Make": "MAZDA",
+    "Model": "MAZDA3",
+    "ModelYear": 2016,
+    "VehicleType": "PASSENGER CAR",
+    "BodyClass": "Hatchback",
+    "DisplacementL": 2.0,
+    "EngineCylinders": 4,
+    "Manufacturer": "MAZDA MOTOR CORPORATION"
+  },
+  {
+    "VIN": "WAUZZZ8K7BA000000",
+    "Make": "AUDI",
+    "Model": "A4",
+    "ModelYear": 2015,
+    "VehicleType": "PASSENGER CAR",
+    "BodyClass": "Sedan/Saloon",
+    "DisplacementL": 2.0,
+    "EngineCylinders": 4,
+    "Manufacturer": "AUDI AG"
+  },
+  {
+    "VIN": "KMHD35LH2JU000000",
+    "Make": "HYUNDAI",
+    "Model": "ELANTRA",
+    "ModelYear": 2019,
+    "VehicleType": "PASSENGER CAR",
+    "BodyClass": "Sedan/Saloon",
+    "DisplacementL": 2.0,
+    "EngineCylinders": 4,
+    "Manufacturer": "HYUNDAI MOTOR COMPANY"
+  }
+]

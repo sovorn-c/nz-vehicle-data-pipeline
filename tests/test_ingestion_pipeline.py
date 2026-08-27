@@ -1,4 +1,6 @@
-"""Tests for IngestionPipeline orchestrator (e01s04 task t02)."""
+"""Tests for IngestionPipeline orchestrator (e01s04, e04s03)."""
+
+from datetime import UTC, datetime, timedelta
 
 from nz_vehicle_data_pipeline.connectors.nhtsa import NHTSAVPICConnector
 from nz_vehicle_data_pipeline.connectors.nzta_csv import NZTAFleetCSVConnector
@@ -68,3 +70,30 @@ async def test_pipeline_ingests_nhtsa_vpic_batch() -> None:
     assert batch_result.items[0].triage_result is not None
     assert batch_result.items[0].triage_result.disposition == IdentityDisposition.ELIGIBLE
     assert batch_result.items[0].triage_result.canonical_vin == "1HGCR2F85HA000000"
+
+
+async def test_ingestion_pipeline_replay_derives_from_original_stored_observation() -> None:
+    """Verify identical replay reuses original stored observation timestamp and metadata."""
+    store = InMemoryObservationStore()
+    engine = NormalizationEngine()
+    triage = IdentityTriage()
+    pipeline = IngestionPipeline(store=store, engine=engine, triage=triage)
+
+    time_1 = datetime(2026, 8, 1, 10, 0, 0, tzinfo=UTC)
+    time_2 = time_1 + timedelta(days=5)
+
+    data = [{"VIN": "1HGCR2F85HA000000", "Make": "HONDA", "Model": "ACCORD", "ModelYear": "2017"}]
+    connector = NHTSAVPICConnector(data=data)
+
+    # First run at time_1
+    res1 = await pipeline.ingest(connector, run_id="run_1", captured_at=time_1)
+    assert res1.total_ingested == 1
+    assert res1.items[0].observation.retrieved_at == time_1
+    assert res1.items[0].observation.ingestion_run_id == "run_1"
+
+    # Second run with same data at time_2
+    res2 = await pipeline.ingest(connector, run_id="run_2", captured_at=time_2)
+    assert res2.total_ingested == 1
+    # Derived from originally stored observation -> retains time_1 and run_1
+    assert res2.items[0].observation.retrieved_at == time_1
+    assert res2.items[0].observation.ingestion_run_id == "run_1"

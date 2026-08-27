@@ -1,0 +1,45 @@
+[
+  {
+    "writeoff_id": "WO_HONDA_01",
+    "vin": "1HGCR2F85HA000000",
+    "status": "NONE",
+    "metadata": {
+      "synthetic": true,
+      "dataset_id": "nz-synth-risk",
+      "dataset_version": "2026.08",
+      "scenario_id": "clean_vehicle",
+      "generated_at": "2026-08-01T10:00:00Z",
+      "disclaimer": "This record represents no real vehicle, person, police report, insurance decision, or financial obligation."
+    }
+  },
+  {
+    "writeoff_id": "WO_FORD_02",
+    "vin": "1FA6P8CF8H5000000",
+    "status": "STATUTORY",
+    "damage_type": "WATER_SUBMERSION",
+    "event_date": "2026-03-12",
+    "insurer": "SYNTHETIC UNDERWRITERS NZ",
+    "repaired": false,
+    "metadata": {
+      "synthetic": true,
+      "dataset_id": "nz-synth-risk",
+      "dataset_version": "2026.08",
+      "scenario_id": "risky_vehicle",
+      "generated_at": "2026-08-01T10:00:00Z",
+      "disclaimer": "This record represents no real vehicle, person, police report, insurance decision, or financial obligation."
+    }
+  },
+  {
+    "writeoff_id": "WO_MAZDA_03",
+    "vin": "JM0BL10F000000000",
+    "status": "UNKNOWN",
+    "metadata": {
+      "synthetic": true,
+      "dataset_id": "nz-synth-risk",
+      "dataset_version": "2026.08",
+      "scenario_id": "unknown_vehicle",
+      "generated_at": "2026-08-01T10:00:00Z",
+      "disclaimer": "This record represents no real vehicle, person, police report, insurance decision, or financial obligation."
+    }
+  }
+]

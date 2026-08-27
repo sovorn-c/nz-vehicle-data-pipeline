@@ -1,0 +1,93 @@
+[
+  {
+    "ppsr_id": "PPSR_HONDA_01",
+    "vin": "1HGCR2F85HA000000",
+    "search_timestamp": "2026-08-01T12:00:00Z",
+    "result": "NO_MATCH",
+    "interests": [],
+    "metadata": {
+      "synthetic": true,
+      "dataset_id": "nz-synth-risk",
+      "dataset_version": "2026.08",
+      "scenario_id": "clean_vehicle",
+      "generated_at": "2026-08-01T10:00:00Z",
+      "disclaimer": "This record represents no real vehicle, person, police report, insurance decision, or financial obligation."
+    }
+  },
+  {
+    "ppsr_id": "PPSR_FORD_02",
+    "vin": "1FA6P8CF8H5000000",
+    "search_timestamp": "2026-08-01T12:00:00Z",
+    "result": "MATCH",
+    "interests": [
+      {
+        "financing_statement_id": "FS_SYNTH_9901",
+        "secured_party": "SYNTHETIC AUTO FINANCE LTD",
+        "collateral_type": "MOTOR_VEHICLE",
+        "registration_date": "2025-06-15",
+        "status": "ACTIVE"
+      }
+    ],
+    "metadata": {
+      "synthetic": true,
+      "dataset_id": "nz-synth-risk",
+      "dataset_version": "2026.08",
+      "scenario_id": "risky_vehicle",
+      "generated_at": "2026-08-01T10:00:00Z",
+      "disclaimer": "This record represents no real vehicle, person, police report, insurance decision, or financial obligation."
+    }
+  },
+  {
+    "ppsr_id": "PPSR_MAZDA_03",
+    "vin": "JM0BL10F000000000",
+    "search_timestamp": "2026-08-01T12:00:00Z",
+    "result": "UNKNOWN",
+    "interests": [],
+    "metadata": {
+      "synthetic": true,
+      "dataset_id": "nz-synth-risk",
+      "dataset_version": "2026.08",
+      "scenario_id": "unknown_vehicle",
+      "generated_at": "2026-08-01T10:00:00Z",
+      "disclaimer": "This record represents no real vehicle, person, police report, insurance decision, or financial obligation."
+    }
+  },
+  {
+    "ppsr_id": "PPSR_AUDI_04A",
+    "vin": "WAUZZZ8K7BA000000",
+    "search_timestamp": "2026-08-01T12:00:00Z",
+    "result": "MATCH",
+    "interests": [
+      {
+        "financing_statement_id": "FS_SYNTH_CONFLICT_1",
+        "secured_party": "SYNTHETIC LENDER A",
+        "collateral_type": "MOTOR_VEHICLE",
+        "registration_date": "2025-01-10",
+        "status": "ACTIVE"
+      }
+    ],
+    "metadata": {
+      "synthetic": true,
+      "dataset_id": "nz-synth-risk",
+      "dataset_version": "2026.08",
+      "scenario_id": "conflict_vehicle",
+      "generated_at": "2026-08-01T10:00:00Z",
+      "disclaimer": "This record represents no real vehicle, person, police report, insurance decision, or financial obligation."
+    }
+  },
+  {
+    "ppsr_id": "PPSR_AUDI_04B",
+    "vin": "WAUZZZ8K7BA000000",
+    "search_timestamp": "2026-08-01T12:00:00Z",
+    "result": "NO_MATCH",
+    "interests": [],
+    "metadata": {
+      "synthetic": true,
+      "dataset_id": "nz-synth-risk",
+      "dataset_version": "2026.08",
+      "scenario_id": "conflict_vehicle",
+      "generated_at": "2026-08-01T10:00:00Z",
+      "disclaimer": "This record represents no real vehicle, person, police report, insurance decision, or financial obligation."
+    }
+  }
+]

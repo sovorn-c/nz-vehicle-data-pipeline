@@ -1,4 +1,4 @@
-"""Ingestion pipeline orchestrator coordinating connectors, stores, and triage."""
+"""Pipeline orchestrator for source ingestion, normalization, and identity triage."""
 
 from datetime import UTC, datetime
 from uuid import uuid4
@@ -26,7 +26,7 @@ from nz_vehicle_data_pipeline.observation.store import ObservationStore
 
 
 class ProcessedObservation(BaseModel):
-    """Result of capturing, normalizing, and triaging a single source observation."""
+    """Pipeline item holding observation, normalization, and triage results."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -36,7 +36,7 @@ class ProcessedObservation(BaseModel):
 
 
 class IngestionBatchResult(BaseModel):
-    """Aggregate result of an executed ingestion batch run."""
+    """Result of an ingestion run on a single connector source."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -64,14 +64,19 @@ class IngestionPipeline:
         self._triage = triage or IdentityTriage()
 
     async def ingest(
-        self, connector: SourceConnector, run_id: str | None = None
+        self,
+        connector: SourceConnector,
+        run_id: str | None = None,
+        captured_at: datetime | None = None,
     ) -> IngestionBatchResult:
         """Run end-to-end ingestion on a connector."""
         actual_run_id = run_id or f"run_{connector.source_system.value.lower()}_{uuid4().hex[:8]}"
+        capture_time = captured_at or datetime.now(UTC)
+
         ingestion_run = IngestionRun(
             ingestion_run_id=actual_run_id,
             source_system=connector.source_system,
-            started_at=datetime.now(UTC),
+            started_at=capture_time,
         )
 
         processed_items: list[ProcessedObservation] = []
@@ -88,15 +93,19 @@ class IngestionPipeline:
                 ingestion_run_id=actual_run_id,
                 source_record_id=raw_rec.record_id,
                 raw_payload=raw_rec.payload,
-                retrieved_at=datetime.now(UTC),
+                retrieved_at=capture_time,
                 synthetic=connector.is_synthetic,
             )
 
             # Persist immutable evidence first (ADR 0001)
             await self._store.save(observation)
 
-            # Normalize observation
-            norm_res = self._engine.normalize(observation)
+            # Derive from original stored observation to preserve immutable metadata on replay
+            stored = await self._store.get_by_id(obs_id)
+            effective_obs = stored if stored is not None else observation
+
+            # Normalize effective observation
+            norm_res = self._engine.normalize(effective_obs)
             triage_res: TriageResult | None = None
 
             if isinstance(norm_res, NormalizedObservation):
@@ -108,11 +117,10 @@ class IngestionPipeline:
                     evidence_only_count += 1
             elif isinstance(norm_res, RejectedObservation):
                 rejected_count += 1
-                evidence_only_count += 1
 
             processed_items.append(
                 ProcessedObservation(
-                    observation=observation,
+                    observation=effective_obs,
                     normalization_result=norm_res,
                     triage_result=triage_res,
                 )

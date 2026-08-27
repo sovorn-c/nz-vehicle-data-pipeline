@@ -1,0 +1,43 @@
+[
+  {
+    "report_id": "STL_HONDA_01",
+    "vin": "1HGCR2F85HA000000",
+    "status": "NOT_LISTED",
+    "metadata": {
+      "synthetic": true,
+      "dataset_id": "nz-synth-risk",
+      "dataset_version": "2026.08",
+      "scenario_id": "clean_vehicle",
+      "generated_at": "2026-08-01T10:00:00Z",
+      "disclaimer": "This record represents no real vehicle, person, police report, insurance decision, or financial obligation."
+    }
+  },
+  {
+    "report_id": "STL_FORD_02",
+    "vin": "1FA6P8CF8H5000000",
+    "status": "LISTED",
+    "reported_at": "2026-07-20T14:30:00Z",
+    "police_district": "Counties Manukau",
+    "metadata": {
+      "synthetic": true,
+      "dataset_id": "nz-synth-risk",
+      "dataset_version": "2026.08",
+      "scenario_id": "risky_vehicle",
+      "generated_at": "2026-08-01T10:00:00Z",
+      "disclaimer": "This record represents no real vehicle, person, police report, insurance decision, or financial obligation."
+    }
+  },
+  {
+    "report_id": "STL_MAZDA_03",
+    "vin": "JM0BL10F000000000",
+    "status": "UNKNOWN",
+    "metadata": {
+      "synthetic": true,
+      "dataset_id": "nz-synth-risk",
+      "dataset_version": "2026.08",
+      "scenario_id": "unknown_vehicle",
+      "generated_at": "2026-08-01T10:00:00Z",
+      "disclaimer": "This record represents no real vehicle, person, police report, insurance decision, or financial obligation."
+    }
+  }
+]
