@@ -1,0 +1,58 @@
+services:
+  db:
+    image: postgres:alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+
+  migrate:
+    build: .
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/postgres
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build: .
+    restart: unless-stopped
+    command: ["uvicorn", "nz_vehicle_data_pipeline.api:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/postgres
+    ports:
+      - "8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/ready\")'"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+
+  seed:
+    build: .
+    command: ["python", "-m", "nz_vehicle_data_pipeline.cli.seed", "--manifest", "fixtures/manifest.json"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/postgres
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    profiles:
+      - tools
+
+volumes:
+  pgdata:
