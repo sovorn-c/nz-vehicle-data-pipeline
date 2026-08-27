@@ -1,4 +1,4 @@
-"""Candidate value extraction from normalized staged models (ADR 0001, ADR 0002, ADR 0003)."""
+"""Candidate value extraction from normalized staged models."""
 
 from typing import Any
 
@@ -6,6 +6,9 @@ from nz_vehicle_data_pipeline.normalization.engine import NormalizedObservation
 from nz_vehicle_data_pipeline.normalization.staging_models import (
     DealerListingStaged,
     NHTSAVPICStaged,
+    PPSRInterestStaged,
+    StolenIndicatorStaged,
+    WriteoffClassificationStaged,
 )
 from nz_vehicle_data_pipeline.observation.models import SourceObservation
 from nz_vehicle_data_pipeline.reconciliation.provenance import (
@@ -62,8 +65,17 @@ class CandidateExtractor:
                 add_candidate("condition", staged.condition)
                 add_candidate("dealer_id", staged.dealer_id)
 
+            case PPSRInterestStaged():
+                add_candidate("ppsr_result", staged.result.value)
+
+            case StolenIndicatorStaged():
+                add_candidate("stolen_status", staged.status.value)
+
+            case WriteoffClassificationStaged():
+                add_candidate("writeoff_status", staged.status.value)
+
             case _:
-                # NZTA is EVIDENCE_ONLY (ADR 0002); synthetic risk is deferred to e04 (ADR 0003)
+                # NZTA is EVIDENCE_ONLY (ADR 0002)
                 pass
 
         return candidates

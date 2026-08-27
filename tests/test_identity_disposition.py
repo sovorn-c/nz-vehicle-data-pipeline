@@ -1,6 +1,6 @@
 """Tests for IdentityDisposition triage per ADR 0002 (e01s03 task t02)."""
 
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 
 from nz_vehicle_data_pipeline.identity.triage import (
     IdentityDisposition,
@@ -8,10 +8,13 @@ from nz_vehicle_data_pipeline.identity.triage import (
 )
 from nz_vehicle_data_pipeline.normalization.engine import NormalizedObservation
 from nz_vehicle_data_pipeline.normalization.staging_models import (
+    SYNTHETIC_DISCLAIMER,
     DealerListingStaged,
     NHTSAVPICStaged,
     NZTAFleetStaged,
     PPSRInterestStaged,
+    PPSRResult,
+    SyntheticMetadata,
 )
 from nz_vehicle_data_pipeline.observation.models import SourceSystem
 
@@ -68,13 +71,21 @@ def test_triage_nzta_fleet_with_11_char_vin_is_evidence_only() -> None:
 
 def test_triage_ppsr_with_invalid_checksum_is_evidence_only() -> None:
     """Verify synthetic record with corrupted check digit is triaged as EVIDENCE_ONLY."""
+    meta = SyntheticMetadata(
+        synthetic=True,
+        dataset_id="ds1",
+        dataset_version="1",
+        scenario_id="scen1",
+        generated_at=datetime(2026, 8, 1, tzinfo=UTC),
+        disclaimer=SYNTHETIC_DISCLAIMER,
+    )
     staged = PPSRInterestStaged(
         ppsr_id="PPSR_001",
         vin="1HGCR2F87HA000000",  # Corrupted check digit 7 (expected 5)
-        secured_party="Bank",
-        collateral_type="Vehicle",
-        registration_date=date(2024, 1, 1),
-        synthetic=True,
+        search_timestamp=datetime(2026, 8, 1, tzinfo=UTC),
+        result=PPSRResult.NO_MATCH,
+        interests=[],
+        metadata=meta,
     )
     norm_obs = NormalizedObservation(
         observation_id="obs_ppsr_1",

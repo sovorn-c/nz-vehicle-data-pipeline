@@ -1,4 +1,4 @@
-"""Connector for synthetic PPSR security interest records."""
+"""Connector for synthetic PPSR security interest records (ADR 0005)."""
 
 import json
 from collections.abc import AsyncIterator
@@ -9,7 +9,7 @@ from nz_vehicle_data_pipeline.observation.models import SourceSystem
 
 
 class SyntheticPPSRConnector(SourceConnector):
-    """Parses synthetic PPSR JSON records."""
+    """Parses synthetic PPSR JSON records without altering source data claims."""
 
     def __init__(self, data: list[dict[str, Any]]) -> None:
         self._data = data
@@ -21,11 +21,11 @@ class SyntheticPPSRConnector(SourceConnector):
     async def fetch_all(self) -> AsyncIterator[RawSourceRecord]:
         for item in self._data:
             ppsr_id = item.get("ppsr_id") or "UNKNOWN_PPSR"
-            # Ensure synthetic flag is always true
-            item["synthetic"] = True
+            # Preserve input without repairing synthetic flag claims
+            is_synthetic = bool(item.get("synthetic", True))
             yield RawSourceRecord(
                 record_id=str(ppsr_id),
                 payload=json.dumps(item),
                 source_system=self.source_system,
-                synthetic=True,
+                synthetic=is_synthetic,
             )

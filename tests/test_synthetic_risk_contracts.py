@@ -1,6 +1,7 @@
 """Unit tests for strict synthetic risk staging models and contracts (e04s01)."""
 
 from datetime import UTC, date, datetime
+
 import pytest
 
 from nz_vehicle_data_pipeline.normalization.staging_models import (
@@ -100,7 +101,7 @@ def test_ppsr_contract_match_and_no_match() -> None:
         metadata=meta,
     )
     assert unknown_rec.result == PPSRResult.UNKNOWN
-    assert unknown_rec.result != PPSRResult.NO_MATCH
+    assert unknown_rec.result.value != PPSRResult.NO_MATCH.value
 
 
 def test_stolen_contract() -> None:
@@ -143,7 +144,7 @@ def test_stolen_contract() -> None:
         metadata=meta,
     )
     assert unknown.status == StolenStatus.UNKNOWN
-    assert unknown.status != StolenStatus.NOT_LISTED
+    assert unknown.status.value != StolenStatus.NOT_LISTED.value
 
 
 def test_writeoff_contract() -> None:
@@ -178,4 +179,4 @@ def test_writeoff_contract() -> None:
         metadata=meta,
     )
     assert unknown_wo.status == WriteoffStatus.UNKNOWN
-    assert unknown_wo.status != WriteoffStatus.NONE
+    assert unknown_wo.status.value != WriteoffStatus.NONE.value

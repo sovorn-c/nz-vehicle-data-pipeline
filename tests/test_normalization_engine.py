@@ -85,10 +85,20 @@ def test_normalize_valid_synthetic_ppsr(engine: NormalizationEngine) -> None:
         {
             "ppsr_id": "PPSR_111",
             "vin": "1HGCR2F83HA000000",
-            "secured_party": "Kiwibank",
-            "collateral_type": "Motor Vehicle",
-            "registration_date": "2024-01-01",
-            "synthetic": True,
+            "search_timestamp": "2026-08-01T12:00:00Z",
+            "result": "NO_MATCH",
+            "interests": [],
+            "metadata": {
+                "synthetic": True,
+                "dataset_id": "synth_ds",
+                "dataset_version": "1.0",
+                "scenario_id": "clean_no_match",
+                "generated_at": "2026-08-01T10:00:00Z",
+                "disclaimer": (
+                    "This record represents no real vehicle, person, police report, "
+                    "insurance decision, or financial obligation."
+                ),
+            },
         }
     )
     obs = SourceObservation(
@@ -104,7 +114,7 @@ def test_normalize_valid_synthetic_ppsr(engine: NormalizationEngine) -> None:
     result = engine.normalize(obs)
     assert isinstance(result, NormalizedObservation)
     assert isinstance(result.staged_data, PPSRInterestStaged)
-    assert result.staged_data.secured_party == "Kiwibank"
+    assert result.staged_data.result == "NO_MATCH"
 
 
 def test_normalize_malformed_payload_produces_rejected_observation(

@@ -1,6 +1,6 @@
 """Tests for CandidateExtractor under ADR 0002, ADR 0003, and e02 scope."""
 
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 
 import pytest
 
@@ -9,7 +9,6 @@ from nz_vehicle_data_pipeline.normalization.staging_models import (
     DealerListingStaged,
     NHTSAVPICStaged,
     NZTAFleetStaged,
-    PPSRInterestStaged,
 )
 from nz_vehicle_data_pipeline.observation.models import SourceObservation, SourceSystem
 from nz_vehicle_data_pipeline.reconciliation.extractor import CandidateExtractor
@@ -100,13 +99,12 @@ def test_extract_dealer_candidates(extractor: CandidateExtractor) -> None:
     assert fields["odometer_km"] == 52000
 
 
-def test_nzta_and_synthetic_risk_yield_zero_candidates_in_e02(
+def test_nzta_evidence_only_yields_zero_candidates(
     extractor: CandidateExtractor,
 ) -> None:
-    """Verify NZTA (EVIDENCE_ONLY) and synthetic risk records yield 0 candidates in e02."""
+    """Verify NZTA (EVIDENCE_ONLY) records yield 0 candidates."""
     as_of = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
 
-    # NZTA Evidence Only
     obs_nzta = SourceObservation(
         observation_id="obs_nzta_01",
         source_system=SourceSystem.NZTA_MVR,
@@ -122,28 +120,3 @@ def test_nzta_and_synthetic_risk_yield_zero_candidates_in_e02(
         staged_data=staged_nzta,
     )
     assert extractor.extract(obs_nzta, norm_nzta) == []
-
-    # Synthetic PPSR (deferred to e04)
-    obs_ppsr = SourceObservation(
-        observation_id="obs_ppsr_01",
-        source_system=SourceSystem.PPSR_SYNTHETIC,
-        ingestion_run_id="run_1",
-        source_record_id="PPSR_9",
-        raw_payload="{}",
-        retrieved_at=as_of,
-        synthetic=True,
-    )
-    staged_ppsr = PPSRInterestStaged(
-        ppsr_id="PPSR_9",
-        vin="1HGCR2F85HA000000",
-        secured_party="ANZ Bank",
-        collateral_type="Vehicle",
-        registration_date=date(2023, 5, 1),
-        synthetic=True,
-    )
-    norm_ppsr = NormalizedObservation(
-        observation_id="obs_ppsr_01",
-        source_system=SourceSystem.PPSR_SYNTHETIC,
-        staged_data=staged_ppsr,
-    )
-    assert extractor.extract(obs_ppsr, norm_ppsr) == []

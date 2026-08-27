@@ -1,18 +1,71 @@
-"""Strict staging data models for normalized source observations."""
+"""Strict staging data models for normalized source observations (ADR 0002, ADR 0005)."""
 
-from datetime import date
+from datetime import date, datetime
 from enum import StrEnum
-from typing import Any, Self
+from typing import Any, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+SYNTHETIC_DISCLAIMER: str = (
+    "This record represents no real vehicle, person, police report, insurance decision, "
+    "or financial obligation."
+)
+
 
 class WriteoffCategory(StrEnum):
-    """Classification of vehicle damage/write-off."""
+    """Legacy classification of vehicle damage/write-off."""
 
     STATUTORY = "STATUTORY"
     REPAIRABLE = "REPAIRABLE"
     NONE = "NONE"
+
+
+class WriteoffStatus(StrEnum):
+    """Classification of synthetic vehicle damage/write-off (ADR 0005)."""
+
+    NONE = "NONE"
+    REPAIRABLE = "REPAIRABLE"
+    STATUTORY = "STATUTORY"
+    UNKNOWN = "UNKNOWN"
+
+
+class PPSRResult(StrEnum):
+    """Result of a synthetic PPSR security interest search (ADR 0005)."""
+
+    MATCH = "MATCH"
+    NO_MATCH = "NO_MATCH"
+    UNKNOWN = "UNKNOWN"
+
+
+class StolenStatus(StrEnum):
+    """Classification of synthetic stolen vehicle indicators (ADR 0005)."""
+
+    LISTED = "LISTED"
+    NOT_LISTED = "NOT_LISTED"
+    UNKNOWN = "UNKNOWN"
+
+
+class SyntheticMetadata(BaseModel):
+    """Validated shared metadata for all synthetic records (ADR 0005)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    synthetic: Literal[True] = True
+    dataset_id: str = Field(description="Unique dataset identifier")
+    dataset_version: str = Field(description="Version of synthetic dataset")
+    scenario_id: str = Field(description="Scenario identifier within dataset")
+    generated_at: datetime = Field(description="Fixed generation timestamp")
+    disclaimer: str = Field(
+        default=SYNTHETIC_DISCLAIMER, description="Mandatory synthetic disclaimer"
+    )
+
+    @field_validator("disclaimer")
+    @classmethod
+    def validate_disclaimer(cls, v: str) -> str:
+        if v != SYNTHETIC_DISCLAIMER:
+            msg = f"Disclaimer must be exactly '{SYNTHETIC_DISCLAIMER}'"
+            raise ValueError(msg)
+        return v
 
 
 def _clean_str(val: Any) -> str | None:
@@ -124,6 +177,7 @@ class DealerListingStaged(BaseModel):
     model_year: int | None = None
     asking_price_nzd: str | None = None
     description: str | None = None
+    metadata: SyntheticMetadata | None = None
 
     @field_validator("vin")
     @classmethod
@@ -131,60 +185,87 @@ class DealerListingStaged(BaseModel):
         return v.strip().upper()
 
 
+class PPSRInterestDetail(BaseModel):
+    """Individual security interest on a PPSR match."""
+
+    model_config = ConfigDict(frozen=True)
+
+    financing_statement_id: str
+    secured_party: str
+    collateral_type: str = "MOTOR_VEHICLE"
+    registration_date: date
+    status: str = "ACTIVE"
+
+
 class PPSRInterestStaged(BaseModel):
-    """Normalized synthetic PPSR security interest record."""
+    """Normalized synthetic PPSR security interest record (ADR 0005)."""
 
     model_config = ConfigDict(frozen=True)
 
     ppsr_id: str
     vin: str
-    secured_party: str
-    collateral_type: str
-    registration_date: date
-    synthetic: bool = True
+    search_timestamp: datetime
+    result: PPSRResult
+    interests: list[PPSRInterestDetail] = Field(default_factory=list)
+    metadata: SyntheticMetadata
+
+    @field_validator("vin")
+    @classmethod
+    def normalize_vin(cls, v: str) -> str:
+        return v.strip().upper()
 
     @model_validator(mode="after")
-    def validate_synthetic(self) -> Self:
-        if not self.synthetic:
-            msg = "Synthetic PPSR records must have synthetic=True"
+    def validate_ppsr_semantics(self) -> Self:
+        if self.result == PPSRResult.MATCH and not self.interests:
+            msg = "PPSR MATCH requires at least one interest"
+            raise ValueError(msg)
+        if self.result == PPSRResult.NO_MATCH and self.interests:
+            msg = "PPSR NO_MATCH forbids interests"
             raise ValueError(msg)
         return self
 
 
 class StolenIndicatorStaged(BaseModel):
-    """Normalized synthetic stolen vehicle report."""
+    """Normalized synthetic stolen vehicle report (ADR 0005)."""
 
     model_config = ConfigDict(frozen=True)
 
     report_id: str
     vin: str
-    stolen_flag: bool
-    report_date: date
+    status: StolenStatus
+    reported_at: datetime | None = None
+    recovered_at: datetime | None = None
     police_district: str | None = None
-    synthetic: bool = True
+    metadata: SyntheticMetadata
+
+    @field_validator("vin")
+    @classmethod
+    def normalize_vin(cls, v: str) -> str:
+        return v.strip().upper()
 
     @model_validator(mode="after")
-    def validate_synthetic(self) -> Self:
-        if not self.synthetic:
-            msg = "Synthetic stolen records must have synthetic=True"
+    def validate_stolen_semantics(self) -> Self:
+        if self.status == StolenStatus.LISTED and not self.reported_at:
+            msg = "Stolen LISTED status requires reported_at timestamp"
             raise ValueError(msg)
         return self
 
 
 class WriteoffClassificationStaged(BaseModel):
-    """Normalized synthetic write-off damage record."""
+    """Normalized synthetic write-off damage record (ADR 0005)."""
 
     model_config = ConfigDict(frozen=True)
 
     writeoff_id: str
     vin: str
-    category: WriteoffCategory
-    damage_date: date | None = None
-    synthetic: bool = True
+    status: WriteoffStatus
+    damage_type: str | None = None
+    event_date: date | None = None
+    insurer: str | None = None
+    repaired: bool = False
+    metadata: SyntheticMetadata
 
-    @model_validator(mode="after")
-    def validate_synthetic(self) -> Self:
-        if not self.synthetic:
-            msg = "Synthetic write-off records must have synthetic=True"
-            raise ValueError(msg)
-        return self
+    @field_validator("vin")
+    @classmethod
+    def normalize_vin(cls, v: str) -> str:
+        return v.strip().upper()

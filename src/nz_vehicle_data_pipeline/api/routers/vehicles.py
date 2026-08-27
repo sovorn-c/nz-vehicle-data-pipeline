@@ -10,7 +10,11 @@ from nz_vehicle_data_pipeline.api.schemas import (
     VehicleRevisionResponse,
 )
 from nz_vehicle_data_pipeline.identity.vin import validate_vin
+from nz_vehicle_data_pipeline.normalization.staging_models import (
+    SYNTHETIC_DISCLAIMER,
+)
 from nz_vehicle_data_pipeline.persistence.canonical_store import (
+    CanonicalRevisionRecord,
     PostgresCanonicalStore,
 )
 from nz_vehicle_data_pipeline.persistence.database import get_db_session
@@ -38,6 +42,27 @@ def get_normalized_vin(vin: str) -> str:
     return res.normalized_vin
 
 
+def _build_revision_response(
+    revision: CanonicalRevisionRecord,
+) -> VehicleRevisionResponse:
+    """Construct VehicleRevisionResponse and attach synthetic disclaimer if data is synthetic."""
+    has_synthetic = any(p.synthetic for provs in revision.field_provenance.values() for p in provs)
+    notice = SYNTHETIC_DISCLAIMER if has_synthetic else None
+    return VehicleRevisionResponse(
+        vin=revision.vin,
+        revision_id=revision.revision_id,
+        revision_number=revision.revision_number,
+        material_hash=revision.material_hash,
+        canonical_fields=revision.canonical_fields,
+        field_provenance=revision.field_provenance,
+        conflicts=revision.conflicts,
+        confidence=revision.confidence,
+        as_of=revision.as_of,
+        published_at=revision.published_at,
+        synthetic_notice=notice,
+    )
+
+
 @router.get(
     "/{vin}",
     response_model=VehicleRevisionResponse,
@@ -55,7 +80,7 @@ async def get_current_vehicle(
     revision = await store.get_current_revision(vin)
     if revision is None:
         raise HTTPException(status_code=404, detail=f"Vehicle with VIN '{vin}' not found")
-    return VehicleRevisionResponse.model_validate(revision.model_dump())
+    return _build_revision_response(revision)
 
 
 @router.get(
@@ -86,7 +111,7 @@ async def get_vehicle_history(
     """Retrieve all published historical revisions for a vehicle in newest-first order."""
     eff_cursor = before_revision if before_revision is not None else cursor
     history = await store.get_revision_history(vin, limit=limit, cursor=eff_cursor)
-    return [VehicleRevisionResponse.model_validate(r.model_dump()) for r in history]
+    return [_build_revision_response(r) for r in history]
 
 
 @router.get(
@@ -110,7 +135,7 @@ async def get_vehicle_revision(
             status_code=404,
             detail=(f"Revision {revision_number} for vehicle with VIN '{vin}' not found"),
         )
-    return VehicleRevisionResponse.model_validate(revision.model_dump())
+    return _build_revision_response(revision)
 
 
 @router.get(

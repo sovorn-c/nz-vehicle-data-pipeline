@@ -1,4 +1,4 @@
-"""Connector for dealer inventory feeds (JSON / XML)."""
+"""Connector for synthetic stolen vehicle reports (ADR 0005)."""
 
 import json
 from collections.abc import AsyncIterator
@@ -8,26 +8,23 @@ from nz_vehicle_data_pipeline.connectors.base import RawSourceRecord, SourceConn
 from nz_vehicle_data_pipeline.observation.models import SourceSystem
 
 
-class DealerFeedConnector(SourceConnector):
-    """Parses dealer feed JSON records."""
+class SyntheticStolenConnector(SourceConnector):
+    """Parses synthetic stolen vehicle JSON records."""
 
     def __init__(self, data: list[dict[str, Any]]) -> None:
         self._data = data
 
     @property
     def source_system(self) -> SourceSystem:
-        return SourceSystem.DEALER_FEED
+        return SourceSystem.STOLEN_SYNTHETIC
 
     async def fetch_all(self) -> AsyncIterator[RawSourceRecord]:
         for item in self._data:
-            listing_id = item.get("listing_id") or "UNKNOWN_LISTING"
+            report_id = item.get("report_id") or "UNKNOWN_STOLEN"
+            is_synthetic = bool(item.get("synthetic", True))
             yield RawSourceRecord(
-                record_id=str(listing_id),
+                record_id=str(report_id),
                 payload=json.dumps(item),
                 source_system=self.source_system,
-                synthetic=True,
+                synthetic=is_synthetic,
             )
-
-
-# Alias for explicit synthetic naming
-SyntheticDealerConnector = DealerFeedConnector

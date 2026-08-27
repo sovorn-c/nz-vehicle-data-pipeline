@@ -1,4 +1,4 @@
-"""OpenAPI schemas for external REST API boundaries (ADR 0004)."""
+"""OpenAPI schemas for external REST API boundaries (ADR 0004, ADR 0005)."""
 
 from datetime import datetime
 from typing import Any
@@ -29,6 +29,10 @@ class VehicleRevisionResponse(BaseModel):
     confidence: ConfidenceAssessment = Field(description="Confidence assessment")
     as_of: datetime = Field(description="Evaluation timestamp")
     published_at: datetime = Field(description="Database publication timestamp")
+    synthetic_notice: str | None = Field(
+        default=None,
+        description="Disclaimer notice when record contains synthetic demonstration data",
+    )
 
 
 class ObservationDetailResponse(BaseModel):

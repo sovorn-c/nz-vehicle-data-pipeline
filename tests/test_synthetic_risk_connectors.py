@@ -1,6 +1,7 @@
 """Unit tests for synthetic risk connectors (e04s01)."""
 
 import json
+
 from nz_vehicle_data_pipeline.connectors.ppsr_synthetic import SyntheticPPSRConnector
 from nz_vehicle_data_pipeline.connectors.stolen_synthetic import (
     SyntheticStolenConnector,
