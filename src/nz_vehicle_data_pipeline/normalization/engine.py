@@ -14,7 +14,11 @@ from nz_vehicle_data_pipeline.normalization.staging_models import (
     StolenIndicatorStaged,
     WriteoffClassificationStaged,
 )
-from nz_vehicle_data_pipeline.observation.models import SourceObservation, SourceSystem
+from nz_vehicle_data_pipeline.normalization.xml_dealer import parse_dealer_xml
+from nz_vehicle_data_pipeline.observation.models import (
+    SourceObservation,
+    SourceSystem,
+)
 
 type StagedData = (
     NZTAFleetStaged
@@ -57,7 +61,9 @@ class NormalizationEngine:
     def normalize(self, observation: SourceObservation) -> NormalizationResult:
         """Normalize observation into typed model or return rejection outcome."""
         try:
-            raw_dict = self._parse_payload_to_dict(observation.raw_payload)
+            raw_dict = self._parse_payload_to_dict(
+                observation.raw_payload, observation.source_system
+            )
             staged = self._map_to_staged_model(observation.source_system, raw_dict)
             return NormalizedObservation(
                 observation_id=observation.observation_id,
@@ -71,9 +77,19 @@ class NormalizationEngine:
                 error_message=f"Failed to parse payload: {exc}",
             )
 
-    def _parse_payload_to_dict(self, raw_payload: str) -> dict[str, Any]:
-        """Parse JSON or key-value formatted payload into dictionary."""
+    def _parse_payload_to_dict(
+        self, raw_payload: str, source_system: SourceSystem
+    ) -> dict[str, Any]:
+        """Parse JSON, XML, or key-value formatted payload into dictionary."""
         trimmed = raw_payload.strip()
+
+        # Handle XML payloads for dealer feed
+        if trimmed.startswith("<"):
+            if source_system == SourceSystem.DEALER_FEED:
+                return parse_dealer_xml(raw_payload)
+            msg = f"XML payload format not supported for source {source_system.value}"
+            raise ValueError(msg)
+
         if trimmed.startswith("{") and trimmed.endswith("}"):
             res = json.loads(trimmed)
             if isinstance(res, dict):

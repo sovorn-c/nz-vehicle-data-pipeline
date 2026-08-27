@@ -90,6 +90,17 @@ def test_dealer_listing_staged_parsing() -> None:
         "odometer_km": 65400,
         "condition": "EXCELLENT",
         "asking_price_nzd": "18500.00",
+        "metadata": {
+            "synthetic": True,
+            "dataset_id": "synth_ds",
+            "dataset_version": "1.0",
+            "scenario_id": "dealer_scen",
+            "generated_at": "2026-08-01T10:00:00Z",
+            "disclaimer": (
+                "This record represents no real vehicle, person, police report, "
+                "insurance decision, or financial obligation."
+            ),
+        },
     }
     staged = DealerListingStaged.model_validate(raw_data)
     assert staged.dealer_id == "DLR_99"

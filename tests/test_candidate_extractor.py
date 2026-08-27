@@ -6,9 +6,11 @@ import pytest
 
 from nz_vehicle_data_pipeline.normalization.engine import NormalizedObservation
 from nz_vehicle_data_pipeline.normalization.staging_models import (
+    SYNTHETIC_DISCLAIMER,
     DealerListingStaged,
     NHTSAVPICStaged,
     NZTAFleetStaged,
+    SyntheticMetadata,
 )
 from nz_vehicle_data_pipeline.observation.models import SourceObservation, SourceSystem
 from nz_vehicle_data_pipeline.reconciliation.extractor import CandidateExtractor
@@ -83,6 +85,14 @@ def test_extract_dealer_candidates(extractor: CandidateExtractor) -> None:
         model_year=2018,
         price_cents=1999000,
         odometer_km=52000,
+        metadata=SyntheticMetadata(
+            synthetic=True,
+            dataset_id="ds1",
+            dataset_version="1",
+            scenario_id="scen1",
+            generated_at=as_of,
+            disclaimer=SYNTHETIC_DISCLAIMER,
+        ),
     )
     norm_dealer = NormalizedObservation(
         observation_id="obs_dlr_01",

@@ -1,6 +1,7 @@
 """Unit tests for strict synthetic dealer listing contracts (e04s02)."""
 
 from datetime import UTC, datetime
+
 import pytest
 from pydantic import ValidationError
 

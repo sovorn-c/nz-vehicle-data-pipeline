@@ -1,7 +1,7 @@
 """Privacy and synthetic boundary scan for offline fixtures (e04s02)."""
 
-from pathlib import Path
 import re
+from pathlib import Path
 
 from nz_vehicle_data_pipeline.normalization.staging_models import SYNTHETIC_DISCLAIMER
 
@@ -24,12 +24,12 @@ def test_fixtures_contain_no_secrets_or_private_data() -> None:
         if file_path.is_file() and file_path.suffix in {".json", ".xml", ".csv"}:
             content = file_path.read_text(encoding="utf-8")
             for pattern in FORBIDDEN_PATTERNS:
-                assert not pattern.search(
-                    content
-                ), f"Prohibited pattern {pattern.pattern} matched in {file_path}"
+                assert not pattern.search(content), (
+                    f"Prohibited pattern {pattern.pattern} matched in {file_path}"
+                )
 
             # If it is a synthetic dealer or risk file, verify disclaimer
             if "synth" in file_path.name or "dealer" in file_path.name or "risk" in file_path.name:
-                assert (
-                    SYNTHETIC_DISCLAIMER in content
-                ), f"Synthetic fixture {file_path} missing mandatory disclaimer"
+                assert SYNTHETIC_DISCLAIMER in content, (
+                    f"Synthetic fixture {file_path} missing mandatory disclaimer"
+                )

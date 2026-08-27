@@ -162,7 +162,7 @@ class NHTSAVPICStaged(BaseModel):
 
 
 class DealerListingStaged(BaseModel):
-    """Normalized dealer feed listing record."""
+    """Normalized dealer feed listing record (ADR 0005, e04s02)."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -171,13 +171,20 @@ class DealerListingStaged(BaseModel):
     vin: str
     price_cents: int
     odometer_km: int
+    currency: str = "NZD"
     condition: str = "GOOD"
+    availability: str = "AVAILABLE"
     make: str | None = None
     model: str | None = None
     model_year: int | None = None
+    trim: str | None = None
     asking_price_nzd: str | None = None
     description: str | None = None
-    metadata: SyntheticMetadata | None = None
+    listing_url: str | None = None
+    image_urls: list[str] = Field(default_factory=list)
+    listed_at: datetime | None = None
+    updated_at: datetime | None = None
+    metadata: SyntheticMetadata
 
     @field_validator("vin")
     @classmethod

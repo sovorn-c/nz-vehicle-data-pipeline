@@ -4,8 +4,10 @@ from datetime import UTC, datetime
 
 from nz_vehicle_data_pipeline.normalization.engine import NormalizedObservation
 from nz_vehicle_data_pipeline.normalization.staging_models import (
+    SYNTHETIC_DISCLAIMER,
     DealerListingStaged,
     NHTSAVPICStaged,
+    SyntheticMetadata,
 )
 from nz_vehicle_data_pipeline.observation.models import SourceObservation, SourceSystem
 from nz_vehicle_data_pipeline.reconciliation.confidence import ConfidenceBand
@@ -54,6 +56,14 @@ async def test_reconcile_emits_pure_deterministic_result() -> None:
         vin=vin,
         price_cents=2100000,
         odometer_km=48000,
+        metadata=SyntheticMetadata(
+            synthetic=True,
+            dataset_id="ds1",
+            dataset_version="1",
+            scenario_id="scen1",
+            generated_at=as_of,
+            disclaimer=SYNTHETIC_DISCLAIMER,
+        ),
     )
     norm_dealer = NormalizedObservation(
         observation_id="obs_dlr_1",

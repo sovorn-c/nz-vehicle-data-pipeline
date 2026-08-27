@@ -110,6 +110,14 @@ def test_triage_dealer_listing_with_valid_vin_is_eligible() -> None:
         vin="1FA6P8CF8H5000000",
         price_cents=2500000,
         odometer_km=45000,
+        metadata=SyntheticMetadata(
+            synthetic=True,
+            dataset_id="ds1",
+            dataset_version="1",
+            scenario_id="scen1",
+            generated_at=datetime(2026, 8, 1, tzinfo=UTC),
+            disclaimer=SYNTHETIC_DISCLAIMER,
+        ),
     )
     norm_obs = NormalizedObservation(
         observation_id="obs_dlr_1",
