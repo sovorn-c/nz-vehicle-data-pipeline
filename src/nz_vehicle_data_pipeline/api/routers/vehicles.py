@@ -46,9 +46,7 @@ def get_normalized_vin(vin: str) -> str:
 
 def _has_synthetic_content(revision: CanonicalRevisionRecord) -> bool:
     """Check whether revision incorporates any synthetic provenance or conflicting observation."""
-    has_prov = any(
-        p.synthetic for provs in revision.field_provenance.values() for p in provs
-    )
+    has_prov = any(p.synthetic for provs in revision.field_provenance.values() for p in provs)
     has_conf = any(
         candidate.provenance.synthetic
         for conflict in revision.conflicts
