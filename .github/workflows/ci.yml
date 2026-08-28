@@ -41,6 +41,9 @@ jobs:
         with:
           python-version: "3.12.11"
 
+      - name: Install dependencies
+        run: uv sync --all-groups --all-extras
+
       - name: Run fail-closed quality checks
         env:
           DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/postgres
