@@ -66,8 +66,45 @@ if ! echo "$CLEAN_JSON" | grep -q '"stolen_status":"NOT_LISTED"'; then
     echo "ERROR: Clean vehicle missing NOT_LISTED stolen_status: $CLEAN_JSON"
     exit 1
 fi
+if ! echo "$CLEAN_JSON" | grep -q '"revision_number":2'; then
+    echo "ERROR: Clean vehicle expected revision_number 2: $CLEAN_JSON"
+    exit 1
+fi
+if ! echo "$CLEAN_JSON" | grep -q '"asking_price_cents":1995000'; then
+    echo "ERROR: Clean vehicle expected Phase 2 updated asking price 1995000: $CLEAN_JSON"
+    exit 1
+fi
+if ! echo "$CLEAN_JSON" | grep -q '"odometer_km":52300'; then
+    echo "ERROR: Clean vehicle expected Phase 2 updated odometer 52300: $CLEAN_JSON"
+    exit 1
+fi
 if echo "$CLEAN_JSON" | grep -q '"raw_payload"'; then
     echo "ERROR: Clean vehicle response leaked raw_payload!"
+    exit 1
+fi
+
+# 1b. Multi-revision history for clean vehicle
+echo "Checking Multi-revision history for 1HGCR2F85HA000000..."
+HIST_JSON=$(curl -s http://localhost:8000/v1/vehicles/1HGCR2F85HA000000/history)
+if ! echo "$HIST_JSON" | grep -q '"revision_number":2'; then
+    echo "ERROR: History missing revision 2: $HIST_JSON"
+    exit 1
+fi
+if ! echo "$HIST_JSON" | grep -q '"revision_number":1'; then
+    echo "ERROR: History missing revision 1: $HIST_JSON"
+    exit 1
+fi
+POS_REV=$(python3 -c "import json, sys; data=json.loads(sys.argv[1]); revs=[r['revision_number'] for r in data]; print(revs)" "$HIST_JSON")
+if [[ "$POS_REV" != "[2, 1]" ]]; then
+    echo "ERROR: Expected history revisions [2, 1], got $POS_REV: $HIST_JSON"
+    exit 1
+fi
+
+# 1c. Catalog discovery endpoint
+echo "Checking Catalog Discovery (/v1/vehicles)..."
+CATALOG_JSON=$(curl -s "http://localhost:8000/v1/vehicles?limit=5&offset=0")
+if ! echo "$CATALOG_JSON" | grep -q '"total":5'; then
+    echo "ERROR: Catalog discovery missing total 5: $CATALOG_JSON"
     exit 1
 fi
 

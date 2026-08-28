@@ -34,12 +34,12 @@ The seeded release contains:
 
 | Evidence and output | Count |
 |---|---:|
-| Immutable source observations | 22 |
-| Eligible normalized records | 19 |
+| Immutable source observations | 23 |
+| Eligible normalized records | 20 |
 | Evidence-only records | 2 |
 | Rejected malformed records | 1 |
 | Canonical vehicles | 5 |
-| Canonical revisions | 5 |
+| Canonical revisions | 6 |
 
 ## What the pipeline does
 

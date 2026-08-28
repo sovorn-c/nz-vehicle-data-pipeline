@@ -45,7 +45,7 @@ services:
 
   seed:
     build: .
-    command: ["python", "-m", "nz_vehicle_data_pipeline.cli.seed", "--manifest", "fixtures/manifest.json"]
+    command: ["python", "-m", "nz_vehicle_data_pipeline.cli.seed", "--manifest", "fixtures/manifest.json", "--phase2"]
     environment:
       DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/postgres
     depends_on:
