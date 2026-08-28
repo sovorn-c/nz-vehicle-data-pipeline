@@ -27,7 +27,6 @@ def test_normalize_valid_nzta_csv_row(engine: NormalizationEngine) -> None:
     """Verify normalizing a valid NZTA CSV row into NormalizedObservation."""
     payload = json.dumps(
         {
-            "plate": "XYZ789",
             "make": "MAZDA",
             "model": "AXELA",
             "year": "2015",
@@ -49,7 +48,6 @@ def test_normalize_valid_nzta_csv_row(engine: NormalizationEngine) -> None:
     assert isinstance(result, NormalizedObservation)
     assert result.observation_id == "obs_nzta_10"
     assert isinstance(result.staged_data, NZTAFleetStaged)
-    assert result.staged_data.plate == "XYZ789"
     assert result.staged_data.make == "MAZDA"
 
 

@@ -2,6 +2,14 @@
   "manifest_id": "release-manifest-2026.08",
   "dataset_version": "2026.08",
   "as_of": "2026-08-01T12:00:00Z",
+  "capture_times": {
+    "NHTSA_VPIC": "2026-08-01T12:00:00Z",
+    "NZTA_MVR": "2026-08-01T12:00:00Z",
+    "DEALER_FEED": "2026-08-01T12:00:00Z",
+    "PPSR_SYNTHETIC": "2026-08-01T12:00:00Z",
+    "STOLEN_SYNTHETIC": "2026-08-01T12:00:00Z",
+    "WRITEOFF_SYNTHETIC": "2026-08-01T12:00:00Z"
+  },
   "sources": [
     {
       "source_system": "NHTSA_VPIC",
@@ -14,7 +22,7 @@
     {
       "source_system": "NZTA_MVR",
       "path": "nzta/fleet_snapshot.csv",
-      "sha256": "81392ef9a69b591a8585e74da6cdbac2e69eced5b4c750619058a51e40a0ad1d",
+      "sha256": "662f339f714bee67b7d423c1171f5de426b77cac181640ae1156068aa0e13753",
       "format": "csv",
       "classification": "captured_public",
       "licence": "CC-BY 4.0 NZTA"

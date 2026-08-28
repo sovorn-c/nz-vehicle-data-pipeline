@@ -98,7 +98,6 @@ class NZTAFleetStaged(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    plate: str = Field(description="NZ registration plate")
     make: str = Field(description="Standardized vehicle make")
     model: str = Field(description="Standardized vehicle model")
     year: int | None = Field(default=None, description="Manufacture or registration year")
@@ -115,7 +114,6 @@ class NZTAFleetStaged(BaseModel):
     def from_raw_dict(cls, raw: dict[str, Any]) -> Self:
         """Construct normalized instance from raw CSV row dictionary."""
         return cls(
-            plate=_clean_str(raw.get("plate")) or "",
             make=_clean_str(raw.get("make")) or "UNKNOWN",
             model=_clean_str(raw.get("model")) or "UNKNOWN",
             year=_clean_int(raw.get("year")),

@@ -43,9 +43,7 @@ def test_triage_nhtsa_with_valid_17_char_vin_is_eligible() -> None:
 
 
 def test_triage_nzta_fleet_with_11_char_vin_is_evidence_only() -> None:
-    """Verify NZTA record with 11-char truncated VIN is triaged as EVIDENCE_ONLY per ADR 0002."""
     staged = NZTAFleetStaged(
-        plate="ABC123",
         make="TOYOTA",
         model="COROLLA",
         year=2019,

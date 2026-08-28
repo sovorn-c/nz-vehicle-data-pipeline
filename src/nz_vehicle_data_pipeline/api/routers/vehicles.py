@@ -46,8 +46,15 @@ def _build_revision_response(
     revision: CanonicalRevisionRecord,
 ) -> VehicleRevisionResponse:
     """Construct VehicleRevisionResponse and attach synthetic disclaimer if data is synthetic."""
-    has_synthetic = any(p.synthetic for provs in revision.field_provenance.values() for p in provs)
-    notice = SYNTHETIC_DISCLAIMER if has_synthetic else None
+    has_synthetic_provenance = any(
+        p.synthetic for provs in revision.field_provenance.values() for p in provs
+    )
+    has_synthetic_conflict = any(
+        candidate.provenance.synthetic
+        for conflict in revision.conflicts
+        for candidate in conflict.conflicting_candidates
+    )
+    notice = SYNTHETIC_DISCLAIMER if has_synthetic_provenance or has_synthetic_conflict else None
     return VehicleRevisionResponse(
         vin=revision.vin,
         revision_id=revision.revision_id,

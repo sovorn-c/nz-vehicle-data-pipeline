@@ -51,7 +51,7 @@ def _ensure_local_postgres() -> bool:
                 "POSTGRES_USER=postgres",
                 "-e",
                 "POSTGRES_DB=postgres",
-                "postgres:alpine",
+                "postgres:18.0-alpine3.22",
             ],
             capture_output=True,
             text=True,
@@ -94,7 +94,8 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
         skip_pg = pytest.mark.skip(
             reason=(
                 "PostgreSQL not reachable at localhost:54329. "
-                "Start Docker or run 'docker run -d --name test_pg -p 54329:5432 postgres:alpine'."
+                "Start Docker or run 'docker run -d --name test_pg -p 54329:5432 "
+                "postgres:18.0-alpine3.22'."
             )
         )
         for item in items:

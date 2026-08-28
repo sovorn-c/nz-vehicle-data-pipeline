@@ -1,5 +1,7 @@
 """Normalization engine mapping raw observations into validated staged models."""
 
+import csv
+import io
 import json
 from datetime import UTC, datetime
 from typing import Any
@@ -93,6 +95,9 @@ class NormalizationEngine:
         if trimmed.startswith("{") and trimmed.endswith("}"):
             res = json.loads(trimmed)
             if isinstance(res, dict):
+                # Unwrap NZTA CSV envelope: raw CSV line + header preserved as JSON
+                if "_csv_line" in res and "_csv_header" in res:
+                    return self._parse_csv_line(res["_csv_header"], res["_csv_line"])
                 return res
             msg = f"Expected JSON object, got {type(res).__name__}"
             raise ValueError(msg)
@@ -110,6 +115,18 @@ class NormalizationEngine:
 
         msg = f"Unrecognized payload format: {raw_payload[:50]}"
         raise ValueError(msg)
+
+    @staticmethod
+    def _parse_csv_line(header: str, line: str) -> dict[str, Any]:
+        """Parse a raw CSV line using its header into a dictionary."""
+        reader = csv.reader(io.StringIO(f"{header}\n{line}"))
+        headers = next(reader)
+        values = next(reader)
+        return {
+            h.strip().lower(): (v.strip() if v else None)
+            for h, v in zip(headers, values, strict=False)
+            if h is not None
+        }
 
     def _map_to_staged_model(self, source_system: SourceSystem, data: dict[str, Any]) -> StagedData:
         """Map raw dictionary to source-specific staging model."""

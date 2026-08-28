@@ -156,6 +156,28 @@ def test_reject_duplicate_scalar_elements() -> None:
     assert "Duplicate XML element" in result.error_message
 
 
+def test_reject_unknown_nested_element() -> None:
+    """Verify unknown nested XML elements cannot be silently ignored."""
+    engine = NormalizationEngine()
+    as_of = datetime(2026, 8, 1, 12, 0, 0, tzinfo=UTC)
+    payload = VALID_DEALER_XML.replace(
+        "    <dealer_id>DLR_01</dealer_id>",
+        "    <unexpected><nested /></unexpected>\n    <dealer_id>DLR_01</dealer_id>",
+    )
+    obs = SourceObservation(
+        observation_id="obs_xml_nested",
+        source_system=SourceSystem.DEALER_FEED,
+        ingestion_run_id="run_1",
+        source_record_id="dealer_xml_nested",
+        raw_payload=payload,
+        retrieved_at=as_of,
+        synthetic=True,
+    )
+    result = engine.normalize(obs)
+    assert isinstance(result, RejectedObservation)
+    assert "Unknown XML element" in result.error_message
+
+
 def test_reject_unknown_root_element() -> None:
     """Verify XML with unknown root element is rejected."""
     engine = NormalizationEngine()

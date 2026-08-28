@@ -5,6 +5,33 @@ from typing import Any
 
 MAX_DEALER_XML_BYTES: int = 262144  # 256 KiB
 FORBIDDEN_DECLARATIONS: tuple[str, ...] = ("<!DOCTYPE", "<!ENTITY", "SYSTEM", "PUBLIC")
+XML_SCALAR_ELEMENTS = {
+    "dealer_id",
+    "listing_id",
+    "vin",
+    "price_cents",
+    "odometer_km",
+    "currency",
+    "condition",
+    "availability",
+    "make",
+    "model",
+    "model_year",
+    "trim",
+    "asking_price_nzd",
+    "description",
+    "listing_url",
+    "listed_at",
+    "updated_at",
+}
+XML_METADATA_ELEMENTS = {
+    "synthetic",
+    "dataset_id",
+    "dataset_version",
+    "scenario_id",
+    "generated_at",
+    "disclaimer",
+}
 
 
 def parse_dealer_xml(payload: str) -> dict[str, Any]:
@@ -39,16 +66,20 @@ def parse_dealer_xml(payload: str) -> dict[str, Any]:
     for child in root:
         tag = child.tag.replace("-", "_")
         if tag == "image_urls":
-            urls = [
-                (c.text or "").strip()
-                for c in child
-                if c.tag.replace("-", "_") in {"image_url", "url"} and c.text
-            ]
+            urls: list[str] = []
+            for image in child:
+                image_tag = image.tag.replace("-", "_")
+                if image_tag not in {"image_url", "url"} or len(image):
+                    raise ValueError(f"Unknown nested XML element: <{image.tag}>")
+                if image.text:
+                    urls.append(image.text.strip())
             data["image_urls"] = urls
         elif tag == "metadata":
             meta_dict: dict[str, Any] = {}
             for mchild in child:
                 mtag = mchild.tag.replace("-", "_")
+                if mtag not in XML_METADATA_ELEMENTS or len(mchild):
+                    raise ValueError(f"Unknown nested XML element: <{mchild.tag}>")
                 val_str = (mchild.text or "").strip()
                 if mtag == "synthetic":
                     meta_dict[mtag] = val_str.lower() in {"true", "1"}
@@ -56,6 +87,8 @@ def parse_dealer_xml(payload: str) -> dict[str, Any]:
                     meta_dict[mtag] = val_str
             data["metadata"] = meta_dict
         else:
+            if tag not in XML_SCALAR_ELEMENTS or len(child):
+                raise ValueError(f"Unknown XML element: <{child.tag}>")
             if tag in seen_scalars:
                 msg = f"Duplicate XML element: <{child.tag}>"
                 raise ValueError(msg)

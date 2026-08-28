@@ -123,7 +123,7 @@ def test_nzta_evidence_only_yields_zero_candidates(
         raw_payload="{}",
         retrieved_at=as_of,
     )
-    staged_nzta = NZTAFleetStaged(plate="ABC123", vin11="1HGCR2F85HA", make="HONDA", model="ACCORD")
+    staged_nzta = NZTAFleetStaged(vin11="1HGCR2F85HA", make="HONDA", model="ACCORD")
     norm_nzta = NormalizedObservation(
         observation_id="obs_nzta_01",
         source_system=SourceSystem.NZTA_MVR,

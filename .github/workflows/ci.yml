@@ -9,11 +9,11 @@ on:
 jobs:
   quality:
     name: Quality and Release Gate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     services:
       postgres:
-        image: postgres:alpine
+        image: postgres:18.0-alpine3.22
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -28,18 +28,18 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v5.4.1
         with:
           enable-cache: true
           version: "0.6.5"
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v5.6.0
         with:
-          python-version: "3.12"
+          python-version: "3.12.11"
 
       - name: Run fail-closed quality checks
         env:

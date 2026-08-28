@@ -44,11 +44,14 @@ if [[ "$STARTUP_ONLY" == "true" ]]; then
     exit 0
 fi
 
+echo "==> Rebuilding seed image from the current checkout..."
+docker compose --profile tools build seed
+
 echo "==> Executing seed command (Run 1)..."
-docker compose run --rm seed
+docker compose --profile tools run --rm seed
 
 echo "==> Executing seed command (Run 2 - Idempotency)..."
-docker compose run --rm seed
+docker compose --profile tools run --rm seed
 
 echo "==> Verifying OpenAPI scenarios..."
 

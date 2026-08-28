@@ -77,6 +77,7 @@ class ReleasePipeline:
         capture_times: dict[str, datetime] | None = None,
         as_of: datetime | None = None,
         manifest_id: str = "default_manifest",
+        run_id_prefix: str | None = None,
     ) -> ReleasePipelineSummary:
         """Run complete release cycle across all connectors deterministically."""
         eval_as_of = as_of or datetime.now(UTC)
@@ -95,8 +96,13 @@ class ReleasePipeline:
         for connector in connectors:
             source_sys = connector.source_system.value
             cap_time = capture_times.get(source_sys) if capture_times else None
+            deterministic_run_id = (
+                f"{run_id_prefix}__{source_sys.lower()}" if run_id_prefix else None
+            )
 
-            batch_res = await self._ingestion_pipeline.ingest(connector, captured_at=cap_time)
+            batch_res = await self._ingestion_pipeline.ingest(
+                connector, run_id=deterministic_run_id, captured_at=cap_time
+            )
             total_obs += batch_res.total_ingested
             total_eligible += batch_res.eligible_count
             total_rejected += batch_res.rejected_count

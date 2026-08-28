@@ -94,9 +94,7 @@ async def test_release_pipeline_runs_all_connectors_and_publishes_revisions(
     )
 
     # 3. NZTA Fleet CSV (EVIDENCE_ONLY)
-    nzta_csv = (
-        "PLATE,MAKE,MODEL,YEAR,VIN11,CHASSIS7\nABC123,TOYOTA,COROLLA,2019,JTDKN3DU5A0,1234567\n"
-    )
+    nzta_csv = "MAKE,MODEL,YEAR,VIN11,CHASSIS7\nHONDA,ACCORD,2017,1HGCR2F85HA,1234567\n"
     nzta_conn = NZTAFleetCSVConnector(csv_content=nzta_csv)
 
     # 4. Dealer connector

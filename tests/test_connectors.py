@@ -13,9 +13,9 @@ from nz_vehicle_data_pipeline.observation.models import SourceSystem
 async def test_nzta_csv_connector_parses_csv_rows() -> None:
     """Verify NZTA CSV connector yields RawSourceRecords from CSV text."""
     csv_text = (
-        "PLATE,MAKE,MODEL,YEAR,VIN11,CHASSIS7,CC_RATING\n"
-        "ABC123,TOYOTA,COROLLA,2019,JTDKN3DU5A0,1234567,1798\n"
-        "XYZ789,MAZDA,AXELA,2015,JM0BL10F200,7654321,1998\n"
+        "MAKE,MODEL,YEAR,VIN11,CHASSIS7,CC_RATING\n"
+        "HONDA,ACCORD,2017,1HGCR2F85HA,1234567,2356\n"
+        "MAZDA,AXELA,2015,JM0BL10F200,7654321,1998\n"
     )
     connector = NZTAFleetCSVConnector(csv_content=csv_text)
     assert connector.source_system == SourceSystem.NZTA_MVR
@@ -27,8 +27,7 @@ async def test_nzta_csv_connector_parses_csv_rows() -> None:
     assert len(records) == 2
     assert records[0].record_id == "row_1"
     parsed_0 = json.loads(records[0].payload)
-    assert parsed_0["plate"] == "ABC123"
-    assert parsed_0["make"] == "TOYOTA"
+    assert parsed_0["_csv_line"].split(",")[0] == "HONDA"
 
 
 async def test_nhtsa_vpic_connector_parses_response() -> None:

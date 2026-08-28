@@ -20,16 +20,17 @@ class NZTAFleetCSVConnector(SourceConnector):
         return SourceSystem.NZTA_MVR
 
     async def fetch_all(self) -> AsyncIterator[RawSourceRecord]:
+        lines = self._csv_content.splitlines()
+        if not lines:
+            return
+        header = lines[0]
         reader = csv.DictReader(io.StringIO(self._csv_content))
-        for row_idx, row in enumerate(reader, start=1):
-            normalized_row = {
-                k.strip().lower(): (v.strip() if v else None)
-                for k, v in row.items()
-                if k is not None
-            }
+        for row_idx, _row in enumerate(reader, start=1):
+            raw_line = lines[row_idx] if row_idx < len(lines) else ""
+            # Wrap raw CSV line in JSON envelope to preserve original bytes
             yield RawSourceRecord(
                 record_id=f"row_{row_idx}",
-                payload=json.dumps(normalized_row),
+                payload=json.dumps({"_csv_line": raw_line, "_csv_header": header}),
                 source_system=self.source_system,
                 synthetic=False,
             )

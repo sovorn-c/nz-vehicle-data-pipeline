@@ -2,6 +2,7 @@
 
 import argparse
 import asyncio
+import hashlib
 import json
 import os
 import sys
@@ -102,32 +103,47 @@ async def run_seed(
             can_store = PostgresCanonicalStore(session)
             pipeline = ReleasePipeline(obs_store=obs_store, canonical_store=can_store)
 
-            summary = await pipeline.run(
-                connectors=connectors,
-                as_of=eval_as_of,
-                manifest_id=manifest_data["manifest_id"],
-            )
+            # Build deterministic capture_times from manifest
+            capture_times_raw = manifest_data.get("capture_times", {})
+            capture_times = {
+                src_sys: datetime.fromisoformat(ts) for src_sys, ts in capture_times_raw.items()
+            }
+            run_id_prefix = manifest_data.get("manifest_id")
 
-            # Contract verification against manifest expected outcomes
-            expected = manifest_data.get("expected_outcomes")
-            if expected:
-                if (
-                    "total_observations" in expected
-                    and summary.total_observations != expected["total_observations"]
-                ):
+            # Fail-closed: validate fixture hashes before any database work
+            for src in manifest_data["sources"]:
+                file_path = fixtures_dir / src["path"]
+                if not file_path.exists():
+                    msg = f"Fixture file missing: {file_path}"
+                    raise FileNotFoundError(msg)
+                actual_hash = hashlib.sha256(file_path.read_bytes()).hexdigest()
+                if actual_hash != src["sha256"]:
                     msg = (
-                        f"Expected {expected['total_observations']} observations, "
-                        f"got {summary.total_observations}"
+                        f"Fixture hash mismatch for {src['path']}: "
+                        f"expected {src['sha256']}, got {actual_hash}"
                     )
                     raise ValueError(msg)
-                if (
-                    "vehicles_count" in expected
-                    and summary.vehicles_processed != expected["vehicles_count"]
-                ):
-                    msg = (
-                        f"Expected {expected['vehicles_count']} vehicles processed, "
-                        f"got {summary.vehicles_processed}"
-                    )
+
+            summary = await pipeline.run(
+                connectors=connectors,
+                capture_times=capture_times or None,
+                as_of=eval_as_of,
+                manifest_id=manifest_data["manifest_id"],
+                run_id_prefix=run_id_prefix,
+            )
+
+            # Fail-closed: verify all expected outcome counts
+            expected = manifest_data.get("expected_outcomes", {})
+            checks = [
+                ("total_observations", summary.total_observations),
+                ("eligible_count", summary.eligible_count),
+                ("rejected_count", summary.rejected_count),
+                ("evidence_only_count", summary.evidence_only_count),
+                ("vehicles_count", summary.vehicles_processed),
+            ]
+            for key, actual in checks:
+                if key in expected and actual != expected[key]:
+                    msg = f"Expected {key}={expected[key]}, got {actual}"
                     raise ValueError(msg)
 
             return summary

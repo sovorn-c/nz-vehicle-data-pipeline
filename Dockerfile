@@ -1,4 +1,4 @@
-FROM python:3.12-slim-bookworm AS builder
+FROM python:3.12.11-slim-bookworm AS builder
 
 # Install uv from official Astral binary
 COPY --from=ghcr.io/astral-sh/uv:0.6.5 /uv /bin/uv
@@ -21,7 +21,7 @@ COPY fixtures ./fixtures
 RUN uv sync --frozen --no-dev
 
 # Final minimal runtime image
-FROM python:3.12-slim-bookworm
+FROM python:3.12.11-slim-bookworm
 
 WORKDIR /app
 

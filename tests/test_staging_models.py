@@ -18,7 +18,6 @@ from nz_vehicle_data_pipeline.normalization.staging_models import (
 def test_nzta_fleet_staged_valid_parsing() -> None:
     """Verify NZTA fleet CSV row parsing into typed staged model."""
     raw_data = {
-        "plate": "ABC123",
         "make": "TOYOTA",
         "model": "COROLLA",
         "year": "2019",
@@ -33,7 +32,6 @@ def test_nzta_fleet_staged_valid_parsing() -> None:
     }
 
     staged = NZTAFleetStaged.from_raw_dict(raw_data)
-    assert staged.plate == "ABC123"
     assert staged.make == "TOYOTA"
     assert staged.model == "COROLLA"
     assert staged.year == 2019
@@ -44,7 +42,6 @@ def test_nzta_fleet_staged_valid_parsing() -> None:
 def test_nzta_fleet_staged_uppercasing_and_trimming() -> None:
     """Verify string fields are stripped and normalized to uppercase."""
     raw_data = {
-        "plate": "  abc123  ",
         "make": " toyota ",
         "model": " corolla ",
         "year": " 2018 ",
@@ -52,7 +49,6 @@ def test_nzta_fleet_staged_uppercasing_and_trimming() -> None:
         "cc_rating": "1800",
     }
     staged = NZTAFleetStaged.from_raw_dict(raw_data)
-    assert staged.plate == "ABC123"
     assert staged.make == "TOYOTA"
     assert staged.model == "COROLLA"
     assert staged.year == 2018

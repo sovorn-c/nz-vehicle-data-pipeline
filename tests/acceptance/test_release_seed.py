@@ -118,6 +118,7 @@ async def test_release_seed_end_to_end_and_idempotency(
     conf_data = resp_conf.json()
     assert "ppsr_result" not in conf_data["canonical_fields"]
     assert any(c["field_name"] == "ppsr_result" for c in conf_data["conflicts"])
+    assert conf_data["synthetic_notice"] == SYNTHETIC_DISCLAIMER
 
     # Scenario 5: Evidence-Only NZTA cannot be queried as canonical VIN
     resp_nzta = await client.get("/v1/vehicles/1HGCR2F85HA")

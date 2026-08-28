@@ -26,6 +26,18 @@ def test_ci_workflow_contract(repo_root: Path) -> None:
     assert "setup-uv" in content or "uv" in content
 
 
+def test_smoke_script_rebuilds_profiled_seed(repo_root: Path) -> None:
+    """Verify smoke runs the current profiled seed image for both idempotency runs."""
+    smoke_path = repo_root / "scripts" / "smoke-local.sh"
+    content = smoke_path.read_text(encoding="utf-8")
+
+    build = "docker compose --profile tools build seed"
+    run = "docker compose --profile tools run --rm seed"
+    assert build in content
+    assert content.count(run) == 2
+    assert content.index(build) < content.index(run)
+
+
 def test_check_script_contract(repo_root: Path) -> None:
     """Verify scripts/check.sh runs lint, types, full tests, migration cycle, and build."""
     check_path = repo_root / "scripts" / "check.sh"

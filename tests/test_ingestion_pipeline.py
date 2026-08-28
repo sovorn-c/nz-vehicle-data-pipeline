@@ -22,9 +22,9 @@ async def test_pipeline_ingests_nzta_csv_batch() -> None:
     pipeline = IngestionPipeline(store=store, engine=engine, triage=triage)
 
     csv_text = (
-        "PLATE,MAKE,MODEL,YEAR,VIN11,CHASSIS7,CC_RATING\n"
-        "ABC123,TOYOTA,COROLLA,2019,JTDKN3DU5A0,1234567,1798\n"
-        "XYZ789,MAZDA,AXELA,2015,JM0BL10F200,7654321,1998\n"
+        "MAKE,MODEL,YEAR,VIN11,CHASSIS7,CC_RATING\n"
+        "HONDA,ACCORD,2017,1HGCR2F85HA,1234567,2356\n"
+        "MAZDA,AXELA,2015,JM0BL10F200,7654321,1998\n"
     )
     connector = NZTAFleetCSVConnector(csv_content=csv_text)
 
