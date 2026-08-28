@@ -54,3 +54,15 @@ def test_fixtures_cover_all_required_release_scenarios(manifest_data: dict[str, 
     ]
     for req in required_scenarios:
         assert req in scenarios, f"Required scenario '{req}' missing from manifest"
+
+
+def test_multi_revision_fixture_validity(fixtures_dir: Path) -> None:
+    """Verify phase 2 multi-revision fixture exists and targets valid VIN (e05s02)."""
+    update_file = fixtures_dir / "phase2" / "dealer_update.json"
+    assert update_file.exists(), f"Phase 2 fixture missing at {update_file}"
+    data = json.loads(update_file.read_text(encoding="utf-8"))
+    assert len(data) >= 1
+    assert data[0]["vin"] == "1HGCR2F85HA000000"
+    assert data[0]["price_cents"] == 1995000
+    assert data[0]["odometer_km"] == 52300
+    assert data[0]["metadata"]["synthetic"] is True

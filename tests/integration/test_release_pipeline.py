@@ -143,3 +143,91 @@ async def test_release_pipeline_runs_all_connectors_and_publishes_revisions(
     )
     assert summary_2.revisions_created == 0
     assert summary_2.revisions_reused == 2
+
+
+async def test_release_pipeline_multi_phase_execution_creates_revision_2(
+    db_session: AsyncSession,
+) -> None:
+    """Verify multi-phase execution updates vehicle and produces Revision 2 (e05s02)."""
+    obs_store = PostgresObservationStore(db_session)
+    can_store = PostgresCanonicalStore(db_session)
+    pipeline = ReleasePipeline(obs_store=obs_store, canonical_store=can_store)
+
+    as_of_1 = datetime(2026, 8, 1, 12, 0, 0, tzinfo=UTC)
+
+    # Phase 1: Ingest initial dealer listing
+    dealer_conn_1 = SyntheticDealerConnector(
+        data=[
+            {
+                "dealer_id": "DLR_01",
+                "listing_id": "LST_01",
+                "vin": VIN_1,
+                "make": "HONDA",
+                "model": "ACCORD",
+                "price_cents": 2150000,
+                "odometer_km": 48500,
+                "metadata": {
+                    "synthetic": True,
+                    "dataset_id": "d1",
+                    "dataset_version": "1",
+                    "scenario_id": "clean_vehicle",
+                    "generated_at": "2026-08-01T10:00:00Z",
+                    "disclaimer": SYNTHETIC_DISCLAIMER,
+                },
+            }
+        ]
+    )
+
+    summary_1 = await pipeline.run(
+        connectors=[dealer_conn_1],
+        capture_times={"DEALER_FEED": as_of_1},
+        as_of=as_of_1,
+        manifest_id="phase_1",
+    )
+    assert summary_1.revisions_created == 1
+    assert summary_1.vin_outcomes[0].revision_number == 1
+
+    # Phase 2: Ingest updated dealer listing with price drop
+    as_of_2 = datetime(2026, 8, 15, 12, 0, 0, tzinfo=UTC)
+    dealer_conn_2 = SyntheticDealerConnector(
+        data=[
+            {
+                "dealer_id": "DLR_01",
+                "listing_id": "LST_01_UPDATE",
+                "vin": VIN_1,
+                "make": "HONDA",
+                "model": "ACCORD",
+                "price_cents": 1995000,
+                "odometer_km": 52300,
+                "metadata": {
+                    "synthetic": True,
+                    "dataset_id": "d1",
+                    "dataset_version": "1",
+                    "scenario_id": "multi_revision_update",
+                    "generated_at": "2026-08-15T10:00:00Z",
+                    "disclaimer": SYNTHETIC_DISCLAIMER,
+                },
+            }
+        ]
+    )
+
+    summary_2 = await pipeline.run(
+        connectors=[dealer_conn_2],
+        capture_times={"DEALER_FEED": as_of_2},
+        as_of=as_of_2,
+        manifest_id="phase_2",
+    )
+    assert summary_2.revisions_created == 1
+    assert summary_2.vin_outcomes[0].revision_number == 2
+    assert summary_2.vin_outcomes[0].created is True
+
+    # Replay Phase 2 (Idempotency)
+    summary_3 = await pipeline.run(
+        connectors=[dealer_conn_2],
+        capture_times={"DEALER_FEED": as_of_2},
+        as_of=as_of_2,
+        manifest_id="phase_2_replay",
+    )
+    assert summary_3.revisions_created == 0
+    assert summary_3.revisions_reused == 1
+    assert summary_3.vin_outcomes[0].revision_number == 2

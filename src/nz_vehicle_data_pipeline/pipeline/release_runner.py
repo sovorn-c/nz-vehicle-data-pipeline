@@ -70,6 +70,9 @@ class ReleasePipeline:
         )
         self._canonical_store = canonical_store
         self._reconciliation_engine = reconciliation_engine or ReconciliationEngine()
+        self._accumulated_eligible: dict[
+            str, list[tuple[SourceObservation, NormalizedObservation]]
+        ] = defaultdict(list)
 
     async def run(
         self,
@@ -116,9 +119,15 @@ class ReleasePipeline:
                     and item.triage_result.disposition == IdentityDisposition.ELIGIBLE
                     and item.triage_result.canonical_vin
                 ):
-                    eligible_groups[item.triage_result.canonical_vin].append(
-                        (item.observation, item.normalization_result)
-                    )
+                    c_vin = item.triage_result.canonical_vin
+                    eligible_groups[c_vin].append((item.observation, item.normalization_result))
+                    existing_ids = {
+                        obs.observation_id for obs, _ in self._accumulated_eligible[c_vin]
+                    }
+                    if item.observation.observation_id not in existing_ids:
+                        self._accumulated_eligible[c_vin].append(
+                            (item.observation, item.normalization_result)
+                        )
 
         # Lexical sorting of canonical VINs for deterministic execution order
         sorted_vins = sorted(eligible_groups.keys())
@@ -127,7 +136,7 @@ class ReleasePipeline:
         revs_reused = 0
 
         for vin in sorted_vins:
-            pairs = eligible_groups[vin]
+            pairs = self._accumulated_eligible[vin]
             recon_res = await self._reconciliation_engine.reconcile(
                 vin=vin, eligible_pairs=pairs, as_of=eval_as_of
             )

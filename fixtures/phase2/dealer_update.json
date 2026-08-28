@@ -1,0 +1,28 @@
+[
+  {
+    "dealer_id": "DLR_AKL_01",
+    "listing_id": "LST_HONDA_01_UPDATE",
+    "vin": "1HGCR2F85HA000000",
+    "make": "HONDA",
+    "model": "ACCORD",
+    "model_year": 2017,
+    "trim": "EX-L",
+    "condition": "EXCELLENT",
+    "price_cents": 1995000,
+    "currency": "NZD",
+    "odometer_km": 52300,
+    "availability": "AVAILABLE",
+    "image_urls": [
+      "https://example.com/honda1.jpg",
+      "https://example.com/honda1_new.jpg"
+    ],
+    "metadata": {
+      "synthetic": true,
+      "dataset_id": "nz-synth-dealer",
+      "dataset_version": "2026.08",
+      "scenario_id": "multi_revision_update",
+      "generated_at": "2026-08-15T10:00:00Z",
+      "disclaimer": "This record represents no real vehicle, person, police report, insurance decision, or financial obligation."
+    }
+  }
+]

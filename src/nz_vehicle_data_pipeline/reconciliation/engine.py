@@ -41,9 +41,25 @@ class ReconciliationEngine:
         eligible_pairs: list[tuple[SourceObservation, NormalizedObservation]],
         as_of: datetime,
     ) -> ReconciliationResult:
-        """Reconcile all eligible source observations for a canonical VIN at given as_of time."""
+        # Filter out observations captured after as_of
+        valid_pairs = [(obs, norm) for obs, norm in eligible_pairs if obs.retrieved_at <= as_of]
+
+        # For observations from the same source entity (e.g. same dealer_id or source record),
+        # keep the latest point-in-time observation as of the evaluation timestamp
+        effective_by_key: dict[
+            tuple[str, str], tuple[SourceObservation, NormalizedObservation]
+        ] = {}
+        for obs, norm in valid_pairs:
+            source_key = obs.source_system.value
+            record_key = getattr(norm.staged_data, "dealer_id", None) or obs.source_record_id
+            composite_key = (source_key, str(record_key))
+
+            existing = effective_by_key.get(composite_key)
+            if existing is None or obs.retrieved_at > existing[0].retrieved_at:
+                effective_by_key[composite_key] = (obs, norm)
+
         all_candidates: list[CandidateValue] = []
-        for obs, norm in eligible_pairs:
+        for obs, norm in effective_by_key.values():
             cands = self._extractor.extract(obs, norm)
             all_candidates.extend(cands)
 

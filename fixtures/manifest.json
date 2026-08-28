@@ -113,7 +113,28 @@
     "malformed_record": {
       "record_id": "PPSR_MALFORMED_99",
       "expected_error": "MATCH requires at least one interest"
+    },
+    "multi_revision_vehicle": {
+      "vin": "1HGCR2F85HA000000",
+      "expected_revisions": 2
     }
+  },
+  "phase2": {
+    "manifest_id": "release-manifest-2026.08-phase2",
+    "as_of": "2026-08-15T12:00:00Z",
+    "capture_times": {
+      "DEALER_FEED": "2026-08-15T10:00:00Z"
+    },
+    "sources": [
+      {
+        "source_system": "DEALER_FEED",
+        "path": "phase2/dealer_update.json",
+        "sha256": "a5943cc4ee8ae488966cbc5e20c5693514453e57da46004e89453e1f3b15dfb8",
+        "format": "json",
+        "classification": "synthetic",
+        "licence": "Synthetic Test Data"
+      }
+    ]
   },
   "expected_outcomes": {
     "total_observations": 22,

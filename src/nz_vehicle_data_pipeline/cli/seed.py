@@ -81,6 +81,7 @@ async def run_seed(
     manifest_path: Path,
     db_url: str,
     as_of: datetime | None = None,
+    enable_phase2: bool = False,
 ) -> ReleasePipelineSummary:
     """Execute complete release scenario seed into PostgreSQL."""
     manifest_text = manifest_path.read_text(encoding="utf-8")
@@ -146,6 +147,39 @@ async def run_seed(
                     msg = f"Expected {key}={expected[key]}, got {actual}"
                     raise ValueError(msg)
 
+            if enable_phase2 and "phase2" in manifest_data:
+                p2 = manifest_data["phase2"]
+                p2_as_of_str = p2.get("as_of")
+                p2_eval_as_of = (
+                    datetime.fromisoformat(p2_as_of_str) if p2_as_of_str else datetime.now(UTC)
+                )
+                p2_connectors = load_connectors_from_manifest(p2, fixtures_dir)
+                p2_capture_times_raw = p2.get("capture_times", {})
+                p2_capture_times = {
+                    src_sys: datetime.fromisoformat(ts)
+                    for src_sys, ts in p2_capture_times_raw.items()
+                }
+                for src in p2["sources"]:
+                    file_path = fixtures_dir / src["path"]
+                    if not file_path.exists():
+                        msg = f"Phase 2 fixture file missing: {file_path}"
+                        raise FileNotFoundError(msg)
+                    actual_hash = hashlib.sha256(file_path.read_bytes()).hexdigest()
+                    if actual_hash != src["sha256"]:
+                        msg = (
+                            f"Phase 2 fixture hash mismatch for {src['path']}: "
+                            f"expected {src['sha256']}, got {actual_hash}"
+                        )
+                        raise ValueError(msg)
+
+                summary = await pipeline.run(
+                    connectors=p2_connectors,
+                    capture_times=p2_capture_times or None,
+                    as_of=p2_eval_as_of,
+                    manifest_id=p2["manifest_id"],
+                    run_id_prefix=p2["manifest_id"],
+                )
+
             return summary
     finally:
         await engine.dispose()
@@ -168,6 +202,11 @@ def main() -> None:
         default=os.environ.get("DATABASE_URL"),
         help="Target PostgreSQL database URL",
     )
+    parser.add_argument(
+        "--phase2",
+        action="store_true",
+        help="Execute phase 2 material updates after baseline seed",
+    )
 
     args = parser.parse_args()
 
@@ -177,7 +216,7 @@ def main() -> None:
         sys.exit(1)
 
     try:
-        summary = asyncio.run(run_seed(args.manifest, db_url))
+        summary = asyncio.run(run_seed(args.manifest, db_url, enable_phase2=args.phase2))
         print(summary.model_dump_json(indent=2))
     except Exception as exc:
         print(f"Seed command failed: {exc}", file=sys.stderr)

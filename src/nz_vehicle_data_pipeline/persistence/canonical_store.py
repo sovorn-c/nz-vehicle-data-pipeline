@@ -69,13 +69,14 @@ class PostgresCanonicalStore:
         vehicle = (await self._session.execute(v_stmt)).scalar_one()
 
         mat_hash = result.material_hash()
-        if vehicle.current_material_hash == mat_hash and vehicle.current_revision_id is not None:
-            # Idempotent replay with identical material hash -> return existing revision
+        if vehicle.current_revision_id is not None:
             curr_stmt = select(CanonicalRevisionRow).where(
                 CanonicalRevisionRow.revision_id == vehicle.current_revision_id
             )
             existing_row = (await self._session.execute(curr_stmt)).scalar_one()
-            return self._row_to_record(existing_row), False
+            if vehicle.current_material_hash == mat_hash or existing_row.as_of > result.as_of:
+                # Idempotent replay with identical hash OR incoming result is older
+                return self._row_to_record(existing_row), False
 
         # Determine next revision number
         latest_rev_stmt = select(func.max(CanonicalRevisionRow.revision_number)).where(
