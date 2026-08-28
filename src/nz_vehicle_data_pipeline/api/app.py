@@ -6,10 +6,11 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, Response
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from nz_vehicle_data_pipeline.api.docs import DOCS_HTML
 from nz_vehicle_data_pipeline.api.routers import observations, vehicles
 from nz_vehicle_data_pipeline.persistence.database import (
     get_db_session,
@@ -33,11 +34,18 @@ def create_app() -> FastAPI:
         description=(
             "Canonical NZ vehicle records with immutable provenance and conflict tracking"
         ),
+        docs_url=None,
+        redoc_url=None,
         lifespan=lifespan,
     )
 
     application.include_router(vehicles.router)
     application.include_router(observations.router)
+
+    @application.get("/docs", include_in_schema=False, response_class=HTMLResponse)
+    async def documentation_page() -> HTMLResponse:
+        """Serve the branded API documentation explorer."""
+        return HTMLResponse(content=DOCS_HTML)
 
     @application.get("/health", tags=["system"], summary="Process liveness check")
     async def health_check() -> dict[str, str]:
