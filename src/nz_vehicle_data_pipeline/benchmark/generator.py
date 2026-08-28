@@ -72,7 +72,7 @@ def generate_benchmark_dataset(
 
     for i in range(1, count + 1):
         wmi = WMI_PREFIXES[(i - 1) % len(WMI_PREFIXES)]
-        serial_val = ((seed % 1000) * 100000) + i
+        serial_val = (((seed % 1000) * 100000) + i) % 100_000_000
         vin = generate_valid_vin(wmi, serial_val)
         vins.append(vin)
 

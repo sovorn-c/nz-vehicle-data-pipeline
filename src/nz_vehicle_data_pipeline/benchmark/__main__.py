@@ -69,6 +69,14 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    if args.count <= 0:
+        print("Error: --count must be a positive integer", file=sys.stderr)
+        sys.exit(1)
+
+    if not 0.0 <= args.conflict_rate <= 1.0:
+        print("Error: --conflict-rate must be between 0.0 and 1.0", file=sys.stderr)
+        sys.exit(1)
+
     try:
         asyncio.run(_run(args.count, args.seed, args.conflict_rate, args.format))
     except Exception as exc:

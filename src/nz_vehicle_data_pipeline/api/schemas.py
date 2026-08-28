@@ -83,6 +83,6 @@ class VehicleCatalogPage(BaseModel):
 
     items: list[VehicleSummary] = Field(description="List of vehicle summaries")
     total: int = Field(ge=0, description="Total canonical vehicles matching query")
-    limit: int = Field(ge=1, description="Page size limit")
+    limit: int = Field(ge=1, le=100, description="Page size limit")
     offset: int = Field(ge=0, description="Page offset")
     disclaimer: str | None = Field(default=None, description="Synthetic data limitation notice")

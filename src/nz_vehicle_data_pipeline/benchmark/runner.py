@@ -49,38 +49,45 @@ async def run_scale_benchmark(
     ingestion = IngestionPipeline(store=obs_store, engine=norm_engine, triage=triage)
     reconciliation = ReconciliationEngine()
 
-    tracemalloc.start()
+    was_tracing = tracemalloc.is_tracing()
+    if was_tracing:
+        tracemalloc.reset_peak()
+    else:
+        tracemalloc.start()
+
     t0 = time.perf_counter()
+    try:
+        total_observations = 0
+        eligible_groups: dict[str, list[tuple[SourceObservation, NormalizedObservation]]] = (
+            defaultdict(list)
+        )
 
-    total_observations = 0
-    eligible_groups: dict[str, list[tuple[SourceObservation, NormalizedObservation]]] = (
-        defaultdict(list)
-    )
+        for connector in dataset.connectors:
+            batch_res = await ingestion.ingest(connector, captured_at=eval_as_of)
+            total_observations += batch_res.total_ingested
 
-    for connector in dataset.connectors:
-        batch_res = await ingestion.ingest(connector, captured_at=eval_as_of)
-        total_observations += batch_res.total_ingested
+            for item in batch_res.items:
+                if (
+                    isinstance(item.normalization_result, NormalizedObservation)
+                    and item.triage_result is not None
+                    and item.triage_result.disposition == IdentityDisposition.ELIGIBLE
+                    and item.triage_result.canonical_vin
+                ):
+                    eligible_groups[item.triage_result.canonical_vin].append(
+                        (item.observation, item.normalization_result)
+                    )
 
-        for item in batch_res.items:
-            if (
-                isinstance(item.normalization_result, NormalizedObservation)
-                and item.triage_result is not None
-                and item.triage_result.disposition == IdentityDisposition.ELIGIBLE
-                and item.triage_result.canonical_vin
-            ):
-                eligible_groups[item.triage_result.canonical_vin].append(
-                    (item.observation, item.normalization_result)
-                )
+        conflicts_detected = 0
+        for vin in sorted(eligible_groups.keys()):
+            pairs = eligible_groups[vin]
+            res = await reconciliation.reconcile(vin=vin, eligible_pairs=pairs, as_of=eval_as_of)
+            conflicts_detected += len(res.conflicts)
 
-    conflicts_detected = 0
-    for vin in sorted(eligible_groups.keys()):
-        pairs = eligible_groups[vin]
-        res = await reconciliation.reconcile(vin=vin, eligible_pairs=pairs, as_of=eval_as_of)
-        conflicts_detected += len(res.conflicts)
-
-    duration = time.perf_counter() - t0
-    _, peak_bytes = tracemalloc.get_traced_memory()
-    tracemalloc.stop()
+        duration = time.perf_counter() - t0
+        _, peak_bytes = tracemalloc.get_traced_memory()
+    finally:
+        if not was_tracing:
+            tracemalloc.stop()
 
     duration = max(duration, 0.0001)  # Guard against division by zero on fast runs
     total_vehicles = len(eligible_groups)

@@ -44,19 +44,24 @@ def get_normalized_vin(vin: str) -> str:
     return res.normalized_vin
 
 
-def _build_revision_response(
-    revision: CanonicalRevisionRecord,
-) -> VehicleRevisionResponse:
-    """Construct VehicleRevisionResponse and attach synthetic disclaimer if data is synthetic."""
-    has_synthetic_provenance = any(
+def _has_synthetic_content(revision: CanonicalRevisionRecord) -> bool:
+    """Check whether revision incorporates any synthetic provenance or conflicting observation."""
+    has_prov = any(
         p.synthetic for provs in revision.field_provenance.values() for p in provs
     )
-    has_synthetic_conflict = any(
+    has_conf = any(
         candidate.provenance.synthetic
         for conflict in revision.conflicts
         for candidate in conflict.conflicting_candidates
     )
-    notice = SYNTHETIC_DISCLAIMER if has_synthetic_provenance or has_synthetic_conflict else None
+    return has_prov or has_conf
+
+
+def _build_revision_response(
+    revision: CanonicalRevisionRecord,
+) -> VehicleRevisionResponse:
+    """Construct VehicleRevisionResponse and attach synthetic disclaimer if data is synthetic."""
+    notice = SYNTHETIC_DISCLAIMER if _has_synthetic_content(revision) else None
     return VehicleRevisionResponse(
         vin=revision.vin,
         revision_id=revision.revision_id,
@@ -75,15 +80,7 @@ def _build_revision_response(
 def _build_vehicle_summary(revision: CanonicalRevisionRecord) -> VehicleSummary:
     """Extract high-level catalog summary from canonical revision."""
     fields = revision.canonical_fields
-    has_synthetic_prov = any(
-        p.synthetic for provs in revision.field_provenance.values() for p in provs
-    )
-    has_synthetic_conf = any(
-        candidate.provenance.synthetic
-        for conflict in revision.conflicts
-        for candidate in conflict.conflicting_candidates
-    )
-    is_synthetic = has_synthetic_prov or has_synthetic_conf
+    is_synthetic = _has_synthetic_content(revision)
     conf_score = round(revision.confidence.score / 100.0, 2)
 
     return VehicleSummary(
