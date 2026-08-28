@@ -7,7 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from nz_vehicle_data_pipeline.api.schemas import (
     ErrorResponse,
+    VehicleCatalogPage,
     VehicleRevisionResponse,
+    VehicleSummary,
 )
 from nz_vehicle_data_pipeline.identity.vin import validate_vin
 from nz_vehicle_data_pipeline.normalization.staging_models import (
@@ -67,6 +69,61 @@ def _build_revision_response(
         as_of=revision.as_of,
         published_at=revision.published_at,
         synthetic_notice=notice,
+    )
+
+
+def _build_vehicle_summary(revision: CanonicalRevisionRecord) -> VehicleSummary:
+    """Extract high-level catalog summary from canonical revision."""
+    fields = revision.canonical_fields
+    has_synthetic_prov = any(
+        p.synthetic for provs in revision.field_provenance.values() for p in provs
+    )
+    has_synthetic_conf = any(
+        candidate.provenance.synthetic
+        for conflict in revision.conflicts
+        for candidate in conflict.conflicting_candidates
+    )
+    is_synthetic = has_synthetic_prov or has_synthetic_conf
+    conf_score = round(revision.confidence.score / 100.0, 2)
+
+    return VehicleSummary(
+        vin=revision.vin,
+        make=fields.get("make"),
+        model=fields.get("model"),
+        year=fields.get("year"),
+        registration_status=fields.get("registration_status"),
+        confidence_score=conf_score,
+        has_conflicts=len(revision.conflicts) > 0,
+        revision_number=revision.revision_number,
+        synthetic=is_synthetic,
+    )
+
+
+@router.get(
+    "",
+    response_model=VehicleCatalogPage,
+    responses={
+        422: {"model": ErrorResponse},
+    },
+    summary="List canonical vehicles (catalog discovery)",
+)
+async def list_vehicles(
+    store: Annotated[PostgresCanonicalStore, Depends(get_canonical_store)],
+    limit: Annotated[int, Query(ge=1, le=100, description="Page size limit")] = 20,
+    offset: Annotated[int, Query(ge=0, description="Page offset")] = 0,
+) -> VehicleCatalogPage:
+    """Retrieve paginated catalog of canonical vehicles for scenario and entity discovery."""
+    revisions, total = await store.list_current_vehicles(limit=limit, offset=offset)
+    items = [_build_vehicle_summary(r) for r in revisions]
+    has_synthetic = any(it.synthetic for it in items)
+    disclaimer = SYNTHETIC_DISCLAIMER if has_synthetic else None
+
+    return VehicleCatalogPage(
+        items=items,
+        total=total,
+        limit=limit,
+        offset=offset,
+        disclaimer=disclaimer,
     )
 
 

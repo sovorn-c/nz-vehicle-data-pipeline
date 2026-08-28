@@ -148,6 +148,33 @@ class PostgresCanonicalStore:
         rows = (await self._session.execute(stmt)).scalars().all()
         return [self._row_to_record(r) for r in rows]
 
+    async def list_current_vehicles(
+        self, limit: int = 20, offset: int = 0
+    ) -> tuple[list[CanonicalRevisionRecord], int]:
+        """Retrieve paginated current canonical vehicle revisions sorted by VIN ascending."""
+        count_stmt = (
+            select(func.count())
+            .select_from(VehicleRow)
+            .where(VehicleRow.current_revision_id.is_not(None))
+        )
+        total = (await self._session.execute(count_stmt)).scalar_one()
+
+        if total == 0:
+            return [], 0
+
+        stmt = (
+            select(CanonicalRevisionRow)
+            .join(
+                VehicleRow,
+                VehicleRow.current_revision_id == CanonicalRevisionRow.revision_id,
+            )
+            .order_by(CanonicalRevisionRow.vin.asc())
+            .limit(limit)
+            .offset(offset)
+        )
+        rows = (await self._session.execute(stmt)).scalars().all()
+        return [self._row_to_record(r) for r in rows], total
+
     def _row_to_record(self, row: CanonicalRevisionRow) -> CanonicalRevisionRecord:
         """Map database row to immutable domain record."""
         prov_dict = {

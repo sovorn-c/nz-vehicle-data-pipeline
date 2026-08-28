@@ -54,3 +54,35 @@ class ErrorResponse(BaseModel):
     """Structured error message."""
 
     detail: str = Field(description="Human-readable error explanation")
+
+
+class VehicleSummary(BaseModel):
+    """High-level summary of a canonical vehicle for catalog discovery."""
+
+    model_config = ConfigDict(frozen=True)
+
+    vin: str = Field(description="Canonical 17-character VIN")
+    make: str | None = Field(default=None, description="Reconciled vehicle make")
+    model: str | None = Field(default=None, description="Reconciled vehicle model")
+    year: int | None = Field(default=None, description="Reconciled model year")
+    registration_status: str | None = Field(default=None, description="Current registration status")
+    confidence_score: float | None = Field(
+        default=None, description="Overall confidence score (0.0 - 1.0)"
+    )
+    has_conflicts: bool = Field(
+        default=False, description="True if any unresolved field conflicts exist"
+    )
+    revision_number: int = Field(default=1, description="Latest revision number")
+    synthetic: bool = Field(default=False, description="True if record incorporates synthetic data")
+
+
+class VehicleCatalogPage(BaseModel):
+    """Paginated collection of canonical vehicle summaries."""
+
+    model_config = ConfigDict(frozen=True)
+
+    items: list[VehicleSummary] = Field(description="List of vehicle summaries")
+    total: int = Field(ge=0, description="Total canonical vehicles matching query")
+    limit: int = Field(ge=1, description="Page size limit")
+    offset: int = Field(ge=0, description="Page offset")
+    disclaimer: str | None = Field(default=None, description="Synthetic data limitation notice")

@@ -17,6 +17,7 @@ def test_openapi_schema_matches_contract() -> None:
 
     paths = schema["paths"]
     assert "/health" in paths
+    assert "/v1/vehicles" in paths
     assert "/v1/vehicles/{vin}" in paths
     assert "/v1/vehicles/{vin}/history" in paths
     assert "/v1/vehicles/{vin}/revisions" in paths
