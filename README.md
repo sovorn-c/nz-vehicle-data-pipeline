@@ -63,6 +63,7 @@ The fixture manifest includes five canonical vehicles. Each one exercises a dist
 | Unknown | `JM0BL10F000000000` | Risk fields remain `UNKNOWN`; missing evidence is not inferred as clean |
 | Conflict | `WAUZZZ8K7BA000000` | Equal-authority PPSR values remain unresolved, with `LOW` confidence |
 | Format parity | `KMHD35LH2JU000000` | JSON and XML dealer feeds produce the same normalized facts while preserving separate observations |
+| Multi-revision | `1HGCR2F85HA000000` | Phase 2 dealer update publishes Revision 2 (price drops to $19,950, mileage to 52,300 km) |
 
 Retrieve the clean scenario:
 
@@ -123,6 +124,18 @@ curl -s \
 ```
 
 Raw payloads appear only on the observation endpoint. Vehicle responses do not embed source payloads.
+
+Discover vehicles through the paginated catalog:
+
+```bash
+curl -s "http://localhost:8000/v1/vehicles?limit=5&offset=0"
+```
+
+Inspect revision progression across time:
+
+```bash
+curl -s http://localhost:8000/v1/vehicles/1HGCR2F85HA000000/history
+```
 
 ## Architecture, provenance, and data flow
 
@@ -203,6 +216,7 @@ All application routes are read-only.
 
 | Method | Route | Purpose |
 |---|---|---|
+| `GET` | `/v1/vehicles` | Paginated catalog discovery of current canonical vehicles (`limit`, `offset`) |
 | `GET` | `/v1/vehicles/{vin}` | Current canonical vehicle record |
 | `GET` | `/v1/vehicles/{vin}/history` | Canonical revision history |
 | `GET` | `/v1/vehicles/{vin}/revisions` | Revision history alias |
@@ -261,7 +275,7 @@ Run the complete local gate:
 bash scripts/check.sh
 ```
 
-The gate runs Ruff linting and formatting checks, strict mypy, 113 pytest tests, an Alembic upgrade and rollback cycle, and a package build.
+The gate runs Ruff linting and formatting checks, strict mypy, 130 pytest tests, an Alembic upgrade and rollback cycle, and a package build.
 
 Coverage includes:
 
@@ -273,6 +287,7 @@ Coverage includes:
 - FastAPI response and OpenAPI contracts
 - Synthetic risk semantics and disclaimer propagation
 - Docker, CI, seed, and smoke-script contracts
+- Scale and throughput benchmarking
 
 ### Local development commands
 
@@ -284,9 +299,22 @@ Coverage includes:
 | Run PostgreSQL integration tests | `bash scripts/test-postgres.sh` |
 | Check lint and formatting | `uv run ruff check . && uv run ruff format --check .` |
 | Run strict type checking | `uv run mypy src tests` |
+| Run scale benchmark | `uv run python -m nz_vehicle_data_pipeline.benchmark --count 100 --seed 42` |
 | Build the package | `uv build` |
 
 Local API development also requires `DATABASE_URL` to point to a migrated PostgreSQL database.
+
+### Scale and throughput benchmark
+
+A deterministic in-memory benchmark measures end-to-end ingestion and reconciliation performance without external dependencies:
+
+```bash
+# Formatted console metrics
+uv run python -m nz_vehicle_data_pipeline.benchmark --count 100 --seed 42
+
+# Structured JSON export
+uv run python -m nz_vehicle_data_pipeline.benchmark --count 50 --format json
+```
 
 ## Data sources and usage boundaries
 
