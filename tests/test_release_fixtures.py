@@ -27,7 +27,11 @@ def test_manifest_schema_and_file_hashes(fixtures_dir: Path, manifest_data: dict
     assert manifest_data["manifest_id"] == "release-manifest-2026.08"
     assert "sources" in manifest_data
 
-    for src in manifest_data["sources"]:
+    all_sources = list(manifest_data["sources"])
+    if "phase2" in manifest_data:
+        all_sources.extend(manifest_data["phase2"].get("sources", []))
+
+    for src in all_sources:
         rel_path = src["path"]
         expected_hash = src["sha256"]
         file_path = fixtures_dir / rel_path

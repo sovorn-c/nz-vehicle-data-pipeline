@@ -16,7 +16,7 @@ fetch_json() {
     local url="$1"
     local expected_code="${2:-200}"
     local response
-    response=$(curl -s -w "\n%{http_code}" "$url")
+    response=$(curl -sS -w "\n%{http_code}" "$url")
     local http_code
     http_code=$(echo "$response" | tail -n1)
     local body
@@ -39,7 +39,7 @@ docker compose up -d --build api
 echo "==> Waiting for API /ready endpoint..."
 READY=false
 for i in $(seq 1 30); do
-    if curl -s -f http://localhost:8000/ready >/dev/null 2>&1; then
+    if curl -sS -f http://localhost:8000/ready >/dev/null 2>&1; then
         READY=true
         break
     fi
