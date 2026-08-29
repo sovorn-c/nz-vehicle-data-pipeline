@@ -12,6 +12,26 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
+fetch_json() {
+    local url="$1"
+    local expected_code="${2:-200}"
+    local response
+    response=$(curl -s -w "\n%{http_code}" "$url")
+    local http_code
+    http_code=$(echo "$response" | tail -n1)
+    local body
+    body=$(echo "$response" | sed '$d')
+    if [[ "$http_code" != "$expected_code" ]]; then
+        echo "ERROR: Expected HTTP $expected_code from $url, got $http_code: $body" >&2
+        exit 1
+    fi
+    if ! echo "$body" | python3 -m json.tool >/dev/null 2>&1; then
+        echo "ERROR: Invalid JSON response from $url: $body" >&2
+        exit 1
+    fi
+    echo "$body"
+}
+
 echo "==> Starting PostgreSQL, Migrations, and API via Docker Compose..."
 docker compose down -v --remove-orphans >/dev/null 2>&1 || true
 docker compose up -d --build api
@@ -33,7 +53,7 @@ if [[ "$READY" != "true" ]]; then
 fi
 
 echo "==> API is ready. Checking /health..."
-HEALTH_RESP=$(curl -s http://localhost:8000/health)
+HEALTH_RESP=$(fetch_json "http://localhost:8000/health" 200)
 if [[ "$HEALTH_RESP" != '{"status":"ok"}' ]]; then
     echo "ERROR: Unexpected /health response: $HEALTH_RESP"
     exit 1
@@ -48,100 +68,131 @@ echo "==> Rebuilding seed image from the current checkout..."
 docker compose --profile tools build seed
 
 echo "==> Executing seed command (Run 1)..."
-docker compose --profile tools run --rm seed
+RUN1_OUTPUT=$(docker compose --profile tools run --rm seed)
+echo "$RUN1_OUTPUT"
 
 echo "==> Executing seed command (Run 2 - Idempotency)..."
-docker compose --profile tools run --rm seed
+RUN2_OUTPUT=$(docker compose --profile tools run --rm seed)
+echo "$RUN2_OUTPUT"
+
+# Verify Run 2 idempotency via JSON inspection
+python3 -c '
+import json, sys
+data = json.loads(sys.argv[1])
+revs_created = data.get("revisions_created")
+revs_reused = data.get("revisions_reused", 0)
+assert revs_created == 0, f"Expected 0 created revisions on replay, got {revs_created}"
+assert revs_reused >= 1, f"Expected reused revisions on replay, got {revs_reused}"
+print("==> Seed idempotency confirmed: 0 created, revisions reused.")
+' "$RUN2_OUTPUT"
 
 echo "==> Verifying OpenAPI scenarios..."
 
-# 1. Clean vehicle
+# 1. Clean vehicle (Phase 2 updated state)
 echo "Checking Clean Vehicle (1HGCR2F85HA000000)..."
-CLEAN_JSON=$(curl -s http://localhost:8000/v1/vehicles/1HGCR2F85HA000000)
-if ! echo "$CLEAN_JSON" | grep -q '"make":"HONDA"'; then
-    echo "ERROR: Clean vehicle missing HONDA make: $CLEAN_JSON"
-    exit 1
-fi
-if ! echo "$CLEAN_JSON" | grep -q '"stolen_status":"NOT_LISTED"'; then
-    echo "ERROR: Clean vehicle missing NOT_LISTED stolen_status: $CLEAN_JSON"
-    exit 1
-fi
-if ! echo "$CLEAN_JSON" | grep -q '"revision_number":2'; then
-    echo "ERROR: Clean vehicle expected revision_number 2: $CLEAN_JSON"
-    exit 1
-fi
-if ! echo "$CLEAN_JSON" | grep -q '"asking_price_cents":1995000'; then
-    echo "ERROR: Clean vehicle expected Phase 2 updated asking price 1995000: $CLEAN_JSON"
-    exit 1
-fi
-if ! echo "$CLEAN_JSON" | grep -q '"odometer_km":52300'; then
-    echo "ERROR: Clean vehicle expected Phase 2 updated odometer 52300: $CLEAN_JSON"
-    exit 1
-fi
-if echo "$CLEAN_JSON" | grep -q '"raw_payload"'; then
-    echo "ERROR: Clean vehicle response leaked raw_payload!"
-    exit 1
-fi
+CLEAN_JSON=$(fetch_json "http://localhost:8000/v1/vehicles/1HGCR2F85HA000000" 200)
+python3 -c '
+import json, sys
+data = json.loads(sys.argv[1])
+rev_num = data.get("revision_number")
+assert rev_num == 2, f"Expected revision 2, got {rev_num}"
+assert data["canonical_fields"]["make"] == "HONDA"
+assert data["canonical_fields"]["stolen_status"] == "NOT_LISTED"
+assert data["canonical_fields"]["asking_price_cents"] == 1995000
+assert data["canonical_fields"]["odometer_km"] == 52300
+assert "raw_payload" not in data, "Leaked raw_payload in canonical vehicle response"
+print("  ✓ Clean vehicle (Rev 2) verified")
+' "$CLEAN_JSON"
 
-# 1b. Multi-revision history for clean vehicle
-echo "Checking Multi-revision history for 1HGCR2F85HA000000..."
-HIST_JSON=$(curl -s http://localhost:8000/v1/vehicles/1HGCR2F85HA000000/history)
-if ! echo "$HIST_JSON" | grep -q '"revision_number":2'; then
-    echo "ERROR: History missing revision 2: $HIST_JSON"
-    exit 1
-fi
-if ! echo "$HIST_JSON" | grep -q '"revision_number":1'; then
-    echo "ERROR: History missing revision 1: $HIST_JSON"
-    exit 1
-fi
-POS_REV=$(python3 -c "import json, sys; data=json.loads(sys.argv[1]); revs=[r['revision_number'] for r in data]; print(revs)" "$HIST_JSON")
-if [[ "$POS_REV" != "[2, 1]" ]]; then
-    echo "ERROR: Expected history revisions [2, 1], got $POS_REV: $HIST_JSON"
-    exit 1
-fi
+# 1b. Multi-revision history
+echo "Checking Multi-revision history (1HGCR2F85HA000000)..."
+HIST_JSON=$(fetch_json "http://localhost:8000/v1/vehicles/1HGCR2F85HA000000/history" 200)
+python3 -c '
+import json, sys
+data = json.loads(sys.argv[1])
+count = len(data)
+assert count == 2, f"Expected exactly 2 revisions, got {count}"
+revs = [r["revision_number"] for r in data]
+assert revs == [2, 1], f"Expected history [2, 1], got {revs}"
+assert data[0]["canonical_fields"]["asking_price_cents"] == 1995000
+assert data[1]["canonical_fields"]["asking_price_cents"] == 2150000
+print("  ✓ Multi-revision history [2, 1] verified")
+' "$HIST_JSON"
 
-# 1c. Catalog discovery endpoint
-echo "Checking Catalog Discovery (/v1/vehicles)..."
-CATALOG_JSON=$(curl -s "http://localhost:8000/v1/vehicles?limit=5&offset=0")
-if ! echo "$CATALOG_JSON" | grep -q '"total":5'; then
-    echo "ERROR: Catalog discovery missing total 5: $CATALOG_JSON"
-    exit 1
-fi
+# 1c. Specific revision endpoints
+echo "Checking Explicit Revisions /revisions/1 and /revisions/2..."
+REV1_JSON=$(fetch_json "http://localhost:8000/v1/vehicles/1HGCR2F85HA000000/revisions/1" 200)
+REV2_JSON=$(fetch_json "http://localhost:8000/v1/vehicles/1HGCR2F85HA000000/revisions/2" 200)
+python3 -c '
+import json, sys
+r1 = json.loads(sys.argv[1])
+r2 = json.loads(sys.argv[2])
+assert r1["revision_number"] == 1 and r1["canonical_fields"]["asking_price_cents"] == 2150000
+assert r2["revision_number"] == 2 and r2["canonical_fields"]["asking_price_cents"] == 1995000
+print("  ✓ Explicit revision 1 and 2 retrieval verified")
+' "$REV1_JSON" "$REV2_JSON"
+
+# 1d. Catalog discovery & pagination slicing
+echo "Checking Catalog Discovery & Pagination (/v1/vehicles)..."
+PAGE1_JSON=$(fetch_json "http://localhost:8000/v1/vehicles?limit=2&offset=0" 200)
+PAGE2_JSON=$(fetch_json "http://localhost:8000/v1/vehicles?limit=2&offset=2" 200)
+python3 -c '
+import json, sys
+p1 = json.loads(sys.argv[1])
+p2 = json.loads(sys.argv[2])
+tot = p1.get("total")
+p1_len = len(p1.get("items", []))
+p2_len = len(p2.get("items", []))
+assert tot == 5, f"Expected total 5, got {tot}"
+assert p1_len == 2, f"Expected 2 items in page 1, got {p1_len}"
+assert p2_len == 2, f"Expected 2 items in page 2, got {p2_len}"
+vins_p1 = {item["vin"] for item in p1["items"]}
+vins_p2 = {item["vin"] for item in p2["items"]}
+assert vins_p1.isdisjoint(vins_p2), "Pagination overlap detected between page 1 and page 2"
+for item in p1["items"] + p2["items"]:
+    assert "vin" in item and "make" in item and "synthetic" in item
+print("  ✓ Catalog pagination slicing verified (disjoint sets, total=5)")
+' "$PAGE1_JSON" "$PAGE2_JSON"
 
 # 2. Risky vehicle
 echo "Checking Risky Vehicle (1FA6P8CF8H5000000)..."
-RISKY_JSON=$(curl -s http://localhost:8000/v1/vehicles/1FA6P8CF8H5000000)
-if ! echo "$RISKY_JSON" | grep -q '"stolen_status":"LISTED"'; then
-    echo "ERROR: Risky vehicle missing LISTED stolen_status: $RISKY_JSON"
-    exit 1
-fi
-if ! echo "$RISKY_JSON" | grep -q '"writeoff_status":"STATUTORY"'; then
-    echo "ERROR: Risky vehicle missing STATUTORY writeoff_status: $RISKY_JSON"
-    exit 1
-fi
+RISKY_JSON=$(fetch_json "http://localhost:8000/v1/vehicles/1FA6P8CF8H5000000" 200)
+python3 -c '
+import json, sys
+data = json.loads(sys.argv[1])
+assert data["canonical_fields"]["stolen_status"] == "LISTED"
+assert data["canonical_fields"]["writeoff_status"] == "STATUTORY"
+print("  ✓ Risky vehicle verified")
+' "$RISKY_JSON"
 
 # 3. Unknown vehicle
 echo "Checking Unknown Vehicle (JM0BL10F000000000)..."
-UNK_JSON=$(curl -s http://localhost:8000/v1/vehicles/JM0BL10F000000000)
-if ! echo "$UNK_JSON" | grep -q '"ppsr_result":"UNKNOWN"'; then
-    echo "ERROR: Unknown vehicle missing UNKNOWN ppsr_result: $UNK_JSON"
-    exit 1
-fi
+UNK_JSON=$(fetch_json "http://localhost:8000/v1/vehicles/JM0BL10F000000000" 200)
+python3 -c '
+import json, sys
+data = json.loads(sys.argv[1])
+assert data["canonical_fields"]["ppsr_result"] == "UNKNOWN"
+print("  ✓ Unknown vehicle verified")
+' "$UNK_JSON"
 
 # 4. Conflict vehicle
 echo "Checking Conflict Vehicle (WAUZZZ8K7BA000000)..."
-CONF_JSON=$(curl -s http://localhost:8000/v1/vehicles/WAUZZZ8K7BA000000)
-if ! echo "$CONF_JSON" | grep -q '"field_name":"ppsr_result"'; then
-    echo "ERROR: Conflict vehicle missing ppsr_result conflict: $CONF_JSON"
-    exit 1
-fi
+CONF_JSON=$(fetch_json "http://localhost:8000/v1/vehicles/WAUZZZ8K7BA000000" 200)
+python3 -c '
+import json, sys
+data = json.loads(sys.argv[1])
+assert any(c["field_name"] == "ppsr_result" for c in data["conflicts"])
+print("  ✓ Conflict vehicle verified")
+' "$CONF_JSON"
 
 # 5. Observation exact evidence
 echo "Checking Observation Exact Evidence (dealer XML)..."
-OBS_JSON=$(curl -s http://localhost:8000/v1/observations/obs_dealer_feed_dealer_xml_LST_HYUNDAI_02)
-if ! echo "$OBS_JSON" | grep -q '<dealer-listing>'; then
-    echo "ERROR: Observation missing exact XML raw payload: $OBS_JSON"
-    exit 1
-fi
+OBS_JSON=$(fetch_json "http://localhost:8000/v1/observations/obs_dealer_feed_dealer_xml_LST_HYUNDAI_02" 200)
+python3 -c '
+import json, sys
+data = json.loads(sys.argv[1])
+assert "<dealer-listing>" in data["raw_payload"], "Raw XML payload missing"
+print("  ✓ Observation raw payload verified")
+' "$OBS_JSON"
 
 echo "==> All local smoke checks passed successfully!"

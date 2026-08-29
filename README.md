@@ -76,12 +76,14 @@ The response includes canonical fields, revision metadata, confidence, conflicts
 ```json
 {
   "vin": "1HGCR2F85HA000000",
-  "revision_id": "rev_1HGCR2F85HA000000_1",
-  "revision_number": 1,
+  "revision_id": "rev_1HGCR2F85HA000000_2",
+  "revision_number": 2,
   "canonical_fields": {
     "make": "HONDA",
     "model": "ACCORD",
     "year": 2017,
+    "asking_price_cents": 1995000,
+    "odometer_km": 52300,
     "ppsr_result": "NO_MATCH",
     "stolen_status": "NOT_LISTED",
     "writeoff_status": "NONE"
@@ -245,7 +247,7 @@ docker compose --profile tools run --rm seed
 
 The seed command verifies every fixture hash before database work. It uses fixed capture times and expected outcome counts from `fixtures/manifest.json`.
 
-A second seed run reuses all five revisions:
+A second seed run reuses all six revisions:
 
 ```bash
 docker compose --profile tools run --rm seed

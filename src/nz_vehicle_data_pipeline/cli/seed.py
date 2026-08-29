@@ -111,8 +111,12 @@ async def run_seed(
             }
             run_id_prefix = manifest_data.get("manifest_id")
 
-            # Fail-closed: validate fixture hashes before any database work
-            for src in manifest_data["sources"]:
+            # Fail-closed: validate all fixture hashes upfront before any pipeline run
+            all_sources = list(manifest_data.get("sources", []))
+            if enable_phase2 and "phase2" in manifest_data:
+                all_sources.extend(manifest_data["phase2"].get("sources", []))
+
+            for src in all_sources:
                 file_path = fixtures_dir / src["path"]
                 if not file_path.exists():
                     msg = f"Fixture file missing: {file_path}"
@@ -133,7 +137,7 @@ async def run_seed(
                 run_id_prefix=run_id_prefix,
             )
 
-            # Fail-closed: verify all expected outcome counts
+            # Fail-closed: verify all expected outcome counts for Phase 1
             expected = manifest_data.get("expected_outcomes", {})
             checks = [
                 ("total_observations", summary.total_observations),
@@ -144,7 +148,7 @@ async def run_seed(
             ]
             for key, actual in checks:
                 if key in expected and actual != expected[key]:
-                    msg = f"Expected {key}={expected[key]}, got {actual}"
+                    msg = f"[Phase 1] Expected {key}={expected[key]}, got {actual}"
                     raise ValueError(msg)
 
             if enable_phase2 and "phase2" in manifest_data:
@@ -159,18 +163,6 @@ async def run_seed(
                     src_sys: datetime.fromisoformat(ts)
                     for src_sys, ts in p2_capture_times_raw.items()
                 }
-                for src in p2["sources"]:
-                    file_path = fixtures_dir / src["path"]
-                    if not file_path.exists():
-                        msg = f"Phase 2 fixture file missing: {file_path}"
-                        raise FileNotFoundError(msg)
-                    actual_hash = hashlib.sha256(file_path.read_bytes()).hexdigest()
-                    if actual_hash != src["sha256"]:
-                        msg = (
-                            f"Phase 2 fixture hash mismatch for {src['path']}: "
-                            f"expected {src['sha256']}, got {actual_hash}"
-                        )
-                        raise ValueError(msg)
 
                 summary = await pipeline.run(
                     connectors=p2_connectors,
@@ -179,6 +171,20 @@ async def run_seed(
                     manifest_id=p2["manifest_id"],
                     run_id_prefix=p2["manifest_id"],
                 )
+
+                # Fail-closed: verify expected outcomes for Phase 2
+                p2_expected = p2.get("expected_outcomes", {})
+                p2_checks = [
+                    ("total_observations", summary.total_observations),
+                    ("eligible_count", summary.eligible_count),
+                    ("rejected_count", summary.rejected_count),
+                    ("evidence_only_count", summary.evidence_only_count),
+                    ("vehicles_count", summary.vehicles_processed),
+                ]
+                for key, actual in p2_checks:
+                    if key in p2_expected and actual != p2_expected[key]:
+                        msg = f"[Phase 2] Expected {key}={p2_expected[key]}, got {actual}"
+                        raise ValueError(msg)
 
             return summary
     finally:

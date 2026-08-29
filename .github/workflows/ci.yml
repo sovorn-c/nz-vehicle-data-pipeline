@@ -49,3 +49,13 @@ jobs:
           DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/postgres
           TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/postgres
         run: bash scripts/check.sh
+
+  smoke:
+    name: Docker Compose Smoke Gate
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Run Docker Compose smoke test
+        run: bash scripts/smoke-local.sh

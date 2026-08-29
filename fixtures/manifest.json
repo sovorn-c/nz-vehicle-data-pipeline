@@ -134,7 +134,14 @@
         "classification": "synthetic",
         "licence": "Synthetic Test Data"
       }
-    ]
+    ],
+    "expected_outcomes": {
+      "total_observations": 1,
+      "eligible_count": 1,
+      "rejected_count": 0,
+      "evidence_only_count": 0,
+      "vehicles_count": 1
+    }
   },
   "expected_outcomes": {
     "total_observations": 22,
