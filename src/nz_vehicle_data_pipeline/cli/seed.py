@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from nz_vehicle_data_pipeline.connectors.base import SourceConnector
 from nz_vehicle_data_pipeline.connectors.dealer import SyntheticDealerConnector
@@ -27,6 +27,7 @@ from nz_vehicle_data_pipeline.connectors.writeoff_synthetic import (
 from nz_vehicle_data_pipeline.persistence.canonical_store import (
     PostgresCanonicalStore,
 )
+from nz_vehicle_data_pipeline.persistence.database import get_engine
 from nz_vehicle_data_pipeline.persistence.observation_store import (
     PostgresObservationStore,
 )
@@ -131,7 +132,7 @@ async def run_seed(
                 msg = f"[{label}] Expected {key}={expected_dict[key]}, got {actual}"
                 raise ValueError(msg)
 
-    engine = create_async_engine(db_url, echo=False)
+    engine = get_engine(db_url)
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
     try:

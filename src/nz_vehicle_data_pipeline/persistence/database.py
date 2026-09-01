@@ -19,6 +19,8 @@ DEFAULT_DATABASE_URL = os.environ.get(
 def get_engine(url: str | None = None) -> AsyncEngine:
     """Create and return an async SQLAlchemy engine."""
     db_url = url or os.environ.get("DATABASE_URL", DEFAULT_DATABASE_URL)
+    if db_url.startswith("postgresql://"):
+        db_url = "postgresql+psycopg://" + db_url.removeprefix("postgresql://")
     return create_async_engine(db_url, echo=False)
 
 
