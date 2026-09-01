@@ -16,12 +16,17 @@ DEFAULT_DATABASE_URL = os.environ.get(
 )
 
 
+def normalize_database_url(db_url: str) -> str:
+    """Select the installed Psycopg 3 driver for standard PostgreSQL URLs."""
+    if db_url.startswith("postgresql://"):
+        return "postgresql+psycopg://" + db_url.removeprefix("postgresql://")
+    return db_url
+
+
 def get_engine(url: str | None = None) -> AsyncEngine:
     """Create and return an async SQLAlchemy engine."""
     db_url = url or os.environ.get("DATABASE_URL", DEFAULT_DATABASE_URL)
-    if db_url.startswith("postgresql://"):
-        db_url = "postgresql+psycopg://" + db_url.removeprefix("postgresql://")
-    return create_async_engine(db_url, echo=False)
+    return create_async_engine(normalize_database_url(db_url), echo=False)
 
 
 def get_session_factory(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
